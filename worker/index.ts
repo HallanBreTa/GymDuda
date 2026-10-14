@@ -1,4 +1,6 @@
 /**
+ * Worker do GymDuda: serve o app (pasta dist, via assets) e a API de sincronização.
+ *
  * GET /api/state → { data, version }   (data = null enquanto nada foi salvo)
  * PUT /api/state ← { data, baseVersion } → { version }
  *
@@ -10,6 +12,7 @@
  */
 
 type Env = {
+  ASSETS: Fetcher
   DB: D1Database
   SYNC_KEY?: string
 }
@@ -46,7 +49,7 @@ async function readRow(db: D1Database) {
   return row ? { data: JSON.parse(row.data) as unknown, version: row.version } : { data: null, version: 0 }
 }
 
-export const onRequest: PagesFunction<Env> = async ({ request, env }) => {
+async function handleState(request: Request, env: Env) {
   if (!env.DB) return json({ error: 'Banco D1 não vinculado (binding DB).' }, 500)
   if (!env.SYNC_KEY) return json({ error: 'Variável SYNC_KEY não configurada.' }, 500)
 
@@ -89,3 +92,12 @@ export const onRequest: PagesFunction<Env> = async ({ request, env }) => {
 
   return json({ error: 'Método não suportado.' }, 405)
 }
+
+export default {
+  async fetch(request, env) {
+    const { pathname } = new URL(request.url)
+    if (pathname === '/api/state') return handleState(request, env)
+    if (pathname.startsWith('/api/')) return json({ error: 'Não encontrado.' }, 404)
+    return env.ASSETS.fetch(request)
+  },
+} satisfies ExportedHandler<Env>

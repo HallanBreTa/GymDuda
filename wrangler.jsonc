@@ -1,0 +1,21 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Precisa ser igual ao nome do Worker no painel da Cloudflare.
+  "name": "gymduda",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-09-01",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    // Só a API passa pelo Worker; o resto é servido direto dos arquivos estáticos.
+    "run_worker_first": ["/api/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "gymduda",
+      "database_id": "COLE_AQUI_O_ID_DO_BANCO"
+    }
+  ]
+}
