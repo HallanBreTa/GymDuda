@@ -1,0 +1,97 @@
+export type Exercise = {
+  id: string
+  name: string
+  sets: number // nº de séries prescritas
+  reps: string // meta, texto livre: "10", "8-12"
+  load: string // carga sugerida, texto livre: "40kg", "peso corporal"
+  notes: string
+}
+
+export const WORKOUT_COLORS = ['lime', 'sky', 'orange', 'pink', 'violet', 'teal'] as const
+export type WorkoutColor = (typeof WORKOUT_COLORS)[number]
+
+export type Workout = {
+  id: string
+  name: string
+  focus: string
+  color: WorkoutColor
+  exercises: Exercise[]
+}
+
+/* ---------- Execução (Feature 2) ---------- */
+
+/** Valores ficam como texto enquanto o usuário digita; validados em domain/sets.ts. */
+export type SetLog = {
+  load: string // kg
+  reps: string
+  rir: string // repetições na reserva (0 = falha)
+  done: boolean
+}
+
+export type ExerciseLog = {
+  name: string // snapshot do nome (permite achar carga anterior mesmo se o id mudar)
+  sets: SetLog[]
+}
+
+/* ---------- Histórico / fila (Feature 1) ---------- */
+
+export type WorkoutSession = {
+  status: 'in_progress' | 'done'
+  workoutId: string
+  workoutName: string // snapshots: o histórico continua legível se o treino for apagado
+  workoutColor: WorkoutColor
+  extra: boolean // feito em dia planejado como descanso
+  startedAt: number
+  finishedAt?: number
+  /** Ponteiro da fila antes da conclusão — permite "Reabrir treino" sem bagunçar a fila. */
+  pointerBefore?: number
+  logs: Record<string, ExerciseLog> // chave = exerciseId
+}
+
+export type RestLog = { status: 'rest'; loggedAt: number }
+
+export type DayLog = WorkoutSession | RestLog
+
+/* ---------- Atividades avulsas (cardio, esportes, mobilidade) ---------- */
+
+export const ACTIVITY_TYPES = ['cardio', 'walk', 'run', 'cycling', 'swim', 'sport', 'mobility', 'other'] as const
+export type ActivityType = (typeof ACTIVITY_TYPES)[number]
+
+export type Intensity = 'light' | 'moderate' | 'intense'
+
+/**
+ * - 'extra': complementar, não mexe na fila (cardio no sábado, cardio depois do Treino A…)
+ * - 'replace': substitui o treino daquele dia; o treino pendente rola para o próximo dia de treino
+ */
+export type ActivityMode = 'extra' | 'replace'
+
+export type Activity = {
+  id: string
+  type: ActivityType
+  durationMin: number
+  distanceKm: number | null
+  intensity: Intensity | null
+  calories: number | null
+  notes: string
+  mode: ActivityMode
+  createdAt: number
+}
+
+export type GymState = {
+  version: 3
+  workouts: Workout[]
+  /** Ordem da divisão (A → B → C → D). Ids de treinos; treinos fora daqui são "avulsos". */
+  queue: string[]
+  /** Índice em `queue` do próximo treino a ser feito. */
+  pointer: number
+  /** Índice 0 = Segunda ... 6 = Domingo. true = dia em que o usuário pretende treinar. */
+  trainingDays: boolean[]
+  /** Histórico por data ISO (yyyy-mm-dd). */
+  history: Record<string, DayLog>
+  /** Atividades avulsas por data ISO. Separado de `history` porque um dia pode ter treino + cardio. */
+  activities: Record<string, Activity[]>
+  /** Data em que o usuário começou a usar a fila — antes disso não há "faltas". */
+  startDate: string
+}
+
+export type Tab = 'today' | 'workouts' | 'week'
