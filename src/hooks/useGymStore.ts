@@ -5,6 +5,7 @@ import { isTrainingDay, normalizePointer, pointerAfterCompletion, queueAt } from
 import { emptySet, isSetValid, pruneUnconfirmed } from '../domain/sets'
 import type { Activity, ActivityMode, DayLog, Exercise, GymState, SetLog, Workout, WorkoutSession } from '../types'
 import { addDays, todayISO, weekdayOf } from '../utils'
+import { useCloudSync } from './useCloudSync'
 
 const STORAGE_KEY = 'gymduda:state'
 const LEGACY_KEY_V1 = 'gymduda:state:v1'
@@ -74,18 +75,20 @@ function sanitize(state: GymState): GymState {
   return { ...state, queue, pointer: normalizePointer(state.pointer, queue.length) }
 }
 
+/** Valida e migra um estado salvo (localStorage ou nuvem). Retorna null se não reconhecer. */
+export function parseState(raw: unknown): GymState | null {
+  if (isStateV3(raw)) return sanitize(raw)
+  if (isStateV2(raw)) return sanitize(migrateV2(raw))
+  if (isStateV1(raw)) return sanitize(migrateV2(migrateV1(raw)))
+  return null
+}
+
 function loadState(): GymState {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) {
-      const parsed: unknown = JSON.parse(raw)
-      if (isStateV3(parsed)) return sanitize(parsed)
-      if (isStateV2(parsed)) return sanitize(migrateV2(parsed))
-    }
-    const legacy = localStorage.getItem(LEGACY_KEY_V1)
-    if (legacy) {
-      const parsed: unknown = JSON.parse(legacy)
-      if (isStateV1(parsed)) return sanitize(migrateV2(migrateV1(parsed)))
+    for (const key of [STORAGE_KEY, LEGACY_KEY_V1]) {
+      const raw = localStorage.getItem(key)
+      const parsed = raw ? parseState(JSON.parse(raw)) : null
+      if (parsed) return parsed
     }
   } catch {
     // localStorage indisponível ou JSON corrompido: começa com os dados padrão
@@ -155,8 +158,9 @@ function editSets(session: WorkoutSession, exercise: Exercise, fn: (sets: SetLog
 
 /* ---------- Hook ---------- */
 
-export function useGymStore() {
+export function useGymStore({ onSyncReplaced }: { onSyncReplaced?: () => void } = {}) {
   const [state, setState] = useState<GymState>(loadState)
+  const sync = useCloudSync(state, setState, parseState, onSyncReplaced)
 
   useEffect(() => {
     try {
@@ -380,7 +384,7 @@ export function useGymStore() {
     [],
   )
 
-  return { state, ...actions }
+  return { state, sync, ...actions }
 }
 
 export type GymStore = ReturnType<typeof useGymStore>

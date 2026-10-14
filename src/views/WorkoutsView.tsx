@@ -2,22 +2,26 @@ import { ChevronRight, Dumbbell, LayoutGrid, Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { BottomSheet } from '../components/BottomSheet'
 import { ConfirmDialog } from '../components/ConfirmDialog'
+import { SyncIcon, SyncSheet } from '../components/SyncSheet'
 import { Button, EmptyState, WorkoutBadge } from '../components/ui'
 import { TEMPLATES, type Template } from '../data/templates'
+import { SYNC_LABELS, type CloudSync } from '../hooks/useCloudSync'
 import type { GymState, Workout } from '../types'
 
 type Props = {
   state: GymState
+  sync: CloudSync
   onCreate: () => void
   onEdit: (workout: Workout) => void
   onDelete: (id: string) => void
   onApplyTemplate: (key: string) => void
 }
 
-export function WorkoutsView({ state, onCreate, onEdit, onDelete, onApplyTemplate }: Props) {
+export function WorkoutsView({ state, sync, onCreate, onEdit, onDelete, onApplyTemplate }: Props) {
   const [toDelete, setToDelete] = useState<Workout | null>(null)
   const [templatesOpen, setTemplatesOpen] = useState(false)
   const [templateToApply, setTemplateToApply] = useState<Template | null>(null)
+  const [syncOpen, setSyncOpen] = useState(false)
 
   const nextId = state.queue[state.pointer]
 
@@ -44,6 +48,21 @@ export function WorkoutsView({ state, onCreate, onEdit, onDelete, onApplyTemplat
         <div className="flex-1">
           <p className="font-semibold">Trocar divisão</p>
           <p className="text-[13px] text-ink-400">ABC, ABCD, ABCDE ou Full Body prontos</p>
+        </div>
+        <ChevronRight size={20} className="text-ink-400" />
+      </button>
+
+      <button
+        type="button"
+        onClick={() => setSyncOpen(true)}
+        className="flex w-full items-center gap-3 rounded-2xl border border-ink-800 bg-ink-900 p-4 text-left transition hover:border-ink-700 active:scale-[0.99]"
+      >
+        <span className={`grid size-11 place-items-center rounded-xl bg-ink-800 ${SYNC_LABELS[sync.status].tone}`}>
+          <SyncIcon status={sync.status} />
+        </span>
+        <div className="flex-1">
+          <p className="font-semibold">Sincronização</p>
+          <p className="text-[13px] text-ink-400">{SYNC_LABELS[sync.status].text}</p>
         </div>
         <ChevronRight size={20} className="text-ink-400" />
       </button>
@@ -145,6 +164,8 @@ export function WorkoutsView({ state, onCreate, onEdit, onDelete, onApplyTemplat
           ))}
         </ul>
       </BottomSheet>
+
+      <SyncSheet sync={sync} open={syncOpen} onClose={() => setSyncOpen(false)} />
 
       <ConfirmDialog
         open={templateToApply !== null}

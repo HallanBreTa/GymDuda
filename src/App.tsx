@@ -21,14 +21,15 @@ function nextWorkoutName(count: number) {
 }
 
 export default function App() {
-  const store = useGymStore()
+  const [toast, setToast] = useState<ToastMessage | null>(null)
+  // Outro aparelho salvou antes: avisa que os dados locais foram trocados pelos da nuvem.
+  const store = useGymStore({ onSyncReplaced: () => setToast({ id: Date.now(), text: 'Dados atualizados com a versão da nuvem' }) })
   const { state } = store
   const today = useToday()
 
   const [tab, setTab] = useState<Tab>('today')
   const [editor, setEditor] = useState<EditorState>(null)
   const [activityForm, setActivityForm] = useState<ActivityFormState>(null)
-  const [toast, setToast] = useState<ToastMessage | null>(null)
   const [highlightActivityId, setHighlightActivityId] = useState<string>()
   const clearToast = useCallback(() => setToast(null), [])
   // Data selecionada na aba Hoje. Guarda também qual era "hoje" na hora da seleção:
@@ -82,6 +83,7 @@ export default function App() {
         {tab === 'workouts' && (
           <WorkoutsView
             state={state}
+            sync={store.sync}
             onCreate={() => setEditor({ workout: null })}
             onEdit={(workout) => setEditor({ workout })}
             onDelete={store.deleteWorkout}
