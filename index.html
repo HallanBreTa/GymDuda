@@ -8,6 +8,15 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>GymDuda</title>
+    <script>
+      // Aplica o tema salvo antes do primeiro desenho (evita piscar). Ver src/theme.ts.
+      try {
+        var pref = localStorage.getItem('gymduda:theme') || 'dark'
+        var light = pref === 'light' || (pref === 'system' && matchMedia('(prefers-color-scheme: light)').matches)
+        document.documentElement.dataset.theme = light ? 'light' : 'dark'
+        if (light) document.querySelector('meta[name="theme-color"]').setAttribute('content', '#f3f5f8')
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

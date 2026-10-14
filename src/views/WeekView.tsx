@@ -17,9 +17,9 @@ type Props = {
 }
 
 const STATUS: Record<DayPlan['kind'], { label: string; className: string }> = {
-  done: { label: 'Feito', className: 'bg-lime/15 text-lime' },
+  done: { label: 'Feito', className: 'bg-lime/15 text-accent' },
   in_progress: { label: 'Em andamento', className: 'bg-amber-400/15 text-amber-300' },
-  pending: { label: 'Hoje', className: 'bg-lime text-ink-950' },
+  pending: { label: 'Hoje', className: 'bg-lime text-on-accent' },
   planned: { label: 'Previsto', className: 'bg-ink-800 text-ink-300' },
   missed: { label: 'Falta', className: 'bg-red-500/15 text-red-400' },
   rest_logged: { label: 'Descansou', className: 'bg-sky-400/12 text-sky-300' },
@@ -97,7 +97,7 @@ export function WeekView({ store, today, onOpenDay, onAddActivity }: Props) {
                 aria-label={`${WEEKDAYS[i]}: ${on ? 'dia de treino' : 'descanso'}`}
                 onClick={() => store.setTrainingDay(i, !on)}
                 className={`flex h-16 flex-col items-center justify-center gap-1 rounded-2xl text-xs font-bold transition active:scale-95 ${
-                  on ? 'bg-lime text-ink-950' : 'bg-ink-900 text-ink-400 hover:bg-ink-800'
+                  on ? 'bg-lime text-on-accent' : 'bg-ink-900 text-ink-400 hover:bg-ink-800'
                 }`}
               >
                 {label}
@@ -137,7 +137,7 @@ export function WeekView({ store, today, onOpenDay, onAddActivity }: Props) {
                     <WorkoutBadge name={w.name} color={w.color} size="sm" />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[15px] font-semibold">{w.name}</span>
-                      {isNext && <span className="text-[11px] font-black tracking-wider text-lime uppercase">Próximo</span>}
+                      {isNext && <span className="text-[11px] font-black tracking-wider text-accent uppercase">Próximo</span>}
                     </span>
                   </button>
                   <IconButton label="Mover para cima" disabled={i === 0} onClick={() => store.moveInQueue(i, -1)}>
@@ -168,7 +168,7 @@ export function WeekView({ store, today, onOpenDay, onAddActivity }: Props) {
                   >
                     <WorkoutBadge name={w.name} color={w.color} size="sm" />
                     <span className="min-w-0 flex-1 truncate text-[15px] text-ink-300">{w.name}</span>
-                    <span className="grid size-10 place-items-center text-lime">
+                    <span className="grid size-10 place-items-center text-accent">
                       <Plus size={18} />
                     </span>
                   </button>
@@ -290,7 +290,7 @@ function Section({ title, hint, children }: { title: string; hint?: string; chil
 function Stat({ value, label, accent, coral }: { value: ReactNode; label: string; accent?: boolean; coral?: boolean }) {
   return (
     <div className="rounded-2xl bg-ink-900 px-3 py-3.5">
-      <p className={`text-2xl font-black tabular-nums ${accent ? 'text-lime' : coral ? 'text-coral' : ''}`}>{value}</p>
+      <p className={`text-2xl font-black tabular-nums ${accent ? 'text-accent' : coral ? 'text-coral' : ''}`}>{value}</p>
       <p className="text-xs text-ink-400">{label}</p>
     </div>
   )

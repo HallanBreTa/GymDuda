@@ -45,7 +45,7 @@ export function SetRow({ index, set, previous, showErrors, shakeKey, onChange, o
       key={shakeKey}
       className={`grid grid-cols-[1.75rem_1fr_1fr_1fr_3rem] items-center gap-1.5 ${Object.keys(errors).length ? 'animate-shake' : ''}`}
     >
-      <span className={`text-center text-sm font-bold tabular-nums ${set.done ? 'text-lime' : 'text-ink-400'}`}>{index + 1}</span>
+      <span className={`text-center text-sm font-bold tabular-nums ${set.done ? 'text-accent' : 'text-ink-400'}`}>{index + 1}</span>
 
       {FIELDS.map(({ field, label, inputMode, maxLength }) => {
         const hasError = !!errors[field]
@@ -86,9 +86,9 @@ export function SetRow({ index, set, previous, showErrors, shakeKey, onChange, o
         aria-label={set.done ? `Desfazer série ${index + 1}` : `Confirmar série ${index + 1}`}
         className={`grid h-12 w-12 place-items-center rounded-xl border-2 transition active:scale-90 ${
           set.done
-            ? 'border-lime bg-lime text-ink-950'
+            ? 'border-lime bg-lime text-on-accent'
             : valid
-              ? 'border-lime/70 text-lime hover:bg-lime/10'
+              ? 'border-lime/70 text-accent hover:bg-lime/10'
               : 'border-ink-700 text-ink-600'
         }`}
       >

@@ -109,7 +109,7 @@ export function ActivityForm({ state, today, editing, defaultDate, onSave, onDel
                     aria-pressed={active}
                     onClick={() => set('type', type)}
                     className={`flex h-[4.25rem] flex-col items-center justify-center gap-1 rounded-2xl text-[11px] font-semibold transition active:scale-95 ${
-                      active ? 'bg-coral text-ink-950' : 'bg-ink-850 text-ink-300 hover:bg-ink-800'
+                      active ? 'bg-coral text-on-accent' : 'bg-ink-850 text-ink-300 hover:bg-ink-800'
                     }`}
                   >
                     <Icon size={20} strokeWidth={active ? 2.5 : 2} />
@@ -360,7 +360,7 @@ function ModeOption({
         selected ? 'border-coral/60 bg-coral/8' : 'border-ink-700 bg-ink-850 hover:border-ink-600'
       }`}
     >
-      <span className={`grid size-9 shrink-0 place-items-center rounded-xl ${selected ? 'bg-coral text-ink-950' : 'bg-ink-800 text-ink-300'}`}>
+      <span className={`grid size-9 shrink-0 place-items-center rounded-xl ${selected ? 'bg-coral text-on-accent' : 'bg-ink-800 text-ink-300'}`}>
         {icon}
       </span>
       <span className="min-w-0 flex-1">

@@ -13,6 +13,12 @@
   --color-lime: #c6f432;
   /* Atividades avulsas (cardio/esporte) — cor própria, distinta das cores dos treinos */
   --color-coral: #ff7a59;
+  /* Texto/ícone sobre preenchimentos coloridos (botão lime, badge do treino…) — escuro nos dois temas */
+  --color-on-accent: #0b0d10;
+  /* Verde usado como TEXTO: no tema claro escurece para manter contraste */
+  --color-accent: #c6f432;
+  /* Marcas dos gráficos (barras, linha) */
+  --color-chart: #c6f432;
 
   --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 
@@ -82,6 +88,40 @@
 :root {
   color-scheme: dark;
   -webkit-tap-highlight-color: transparent;
+}
+
+/*
+ * Tema claro: redefine os tokens; os componentes não mudam.
+ * O tema é aplicado em <html data-theme> (ver src/theme.ts e o script em index.html).
+ * Os tons 300/400 da paleta padrão viram tons mais escuros para manter contraste no fundo branco.
+ */
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --color-ink-950: #f3f5f8;
+  --color-ink-900: #ffffff;
+  --color-ink-850: #eef1f5;
+  --color-ink-800: #e3e7ed;
+  --color-ink-700: #d0d6de;
+  --color-ink-600: #aab3bf;
+  --color-ink-400: #5f6875;
+  --color-ink-300: #434b56;
+  --color-ink-100: #12151a;
+
+  --color-lime: #9ad31a;
+  --color-accent: #4d7c0f;
+  --color-chart: #65a30d;
+  --color-coral: #d4461c;
+
+  --color-sky-300: #0369a1;
+  --color-sky-400: #0279b8;
+  --color-amber-300: #92400e;
+  --color-amber-400: #b45309;
+  --color-red-400: #dc2626;
+  --color-violet-400: #7c3aed;
+  --color-teal-400: #0d9488;
+  --color-pink-400: #db2777;
+  --color-orange-400: #ea580c;
 }
 
 html,

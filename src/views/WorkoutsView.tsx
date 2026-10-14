@@ -3,27 +3,23 @@ import { useState } from 'react'
 import { BottomSheet } from '../components/BottomSheet'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { ExportSheet } from '../components/ExportSheet'
-import { SyncIcon, SyncSheet } from '../components/SyncSheet'
 import { Button, EmptyState, WorkoutBadge } from '../components/ui'
 import { TEMPLATES, type Template } from '../data/templates'
-import { SYNC_LABELS, type CloudSync } from '../hooks/useCloudSync'
 import type { GymState, Workout } from '../types'
 
 type Props = {
   state: GymState
   today: string
-  sync: CloudSync
   onCreate: () => void
   onEdit: (workout: Workout) => void
   onDelete: (id: string) => void
   onApplyTemplate: (key: string) => void
 }
 
-export function WorkoutsView({ state, today, sync, onCreate, onEdit, onDelete, onApplyTemplate }: Props) {
+export function WorkoutsView({ state, today, onCreate, onEdit, onDelete, onApplyTemplate }: Props) {
   const [toDelete, setToDelete] = useState<Workout | null>(null)
   const [templatesOpen, setTemplatesOpen] = useState(false)
   const [templateToApply, setTemplateToApply] = useState<Template | null>(null)
-  const [syncOpen, setSyncOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
 
   const nextId = state.queue[state.pointer]
@@ -51,21 +47,6 @@ export function WorkoutsView({ state, today, sync, onCreate, onEdit, onDelete, o
         <div className="flex-1">
           <p className="font-semibold">Trocar divisão</p>
           <p className="text-[13px] text-ink-400">ABC, ABCD, ABCDE ou Full Body prontos</p>
-        </div>
-        <ChevronRight size={20} className="text-ink-400" />
-      </button>
-
-      <button
-        type="button"
-        onClick={() => setSyncOpen(true)}
-        className="flex w-full items-center gap-3 rounded-2xl border border-ink-800 bg-ink-900 p-4 text-left transition hover:border-ink-700 active:scale-[0.99]"
-      >
-        <span className={`grid size-11 place-items-center rounded-xl bg-ink-800 ${SYNC_LABELS[sync.status].tone}`}>
-          <SyncIcon status={sync.status} />
-        </span>
-        <div className="flex-1">
-          <p className="font-semibold">Sincronização</p>
-          <p className="text-[13px] text-ink-400">{SYNC_LABELS[sync.status].text}</p>
         </div>
         <ChevronRight size={20} className="text-ink-400" />
       </button>
@@ -124,7 +105,7 @@ export function WorkoutsView({ state, today, sync, onCreate, onEdit, onDelete, o
                     {position >= 0 ? (
                       <span
                         className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                          w.id === nextId ? 'bg-lime text-ink-950' : 'bg-lime/10 text-lime'
+                          w.id === nextId ? 'bg-lime text-on-accent' : 'bg-lime/10 text-accent'
                         }`}
                       >
                         {w.id === nextId ? 'Próximo' : `${position + 1}º na fila`}
@@ -169,7 +150,7 @@ export function WorkoutsView({ state, today, sync, onCreate, onEdit, onDelete, o
                 onClick={() => setTemplateToApply(t)}
                 className="flex min-h-16 w-full items-center gap-3 rounded-2xl bg-ink-850 p-3 text-left transition hover:bg-ink-800 active:scale-[0.99]"
               >
-                <span className="grid h-11 min-w-11 place-items-center rounded-xl bg-lime/12 px-2 text-sm font-black text-lime">
+                <span className="grid h-11 min-w-11 place-items-center rounded-xl bg-lime/12 px-2 text-sm font-black text-accent">
                   {t.label === 'Full Body' ? 'FB' : t.label}
                 </span>
                 <div className="flex-1">
@@ -183,7 +164,6 @@ export function WorkoutsView({ state, today, sync, onCreate, onEdit, onDelete, o
         </ul>
       </BottomSheet>
 
-      <SyncSheet sync={sync} open={syncOpen} onClose={() => setSyncOpen(false)} />
       <ExportSheet state={state} today={today} open={exportOpen} onClose={() => setExportOpen(false)} />
 
       <ConfirmDialog

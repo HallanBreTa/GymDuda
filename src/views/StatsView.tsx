@@ -58,7 +58,7 @@ export function StatsView({ state, today }: { state: GymState; today: string }) 
             onClick={() => setDays(p.days)}
             aria-pressed={days === p.days}
             className={`h-10 rounded-xl text-sm font-semibold transition ${
-              days === p.days ? 'bg-lime text-ink-950' : 'bg-ink-900 text-ink-300 hover:bg-ink-800'
+              days === p.days ? 'bg-lime text-on-accent' : 'bg-ink-900 text-ink-300 hover:bg-ink-800'
             }`}
           >
             {p.label}

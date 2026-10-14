@@ -19,7 +19,7 @@ export function Toast({ toast, onDone }: { toast: ToastMessage | null; onDone: (
         role="status"
         className="animate-toast-in flex items-center gap-2.5 rounded-full border border-ink-700 bg-ink-800/95 py-2.5 pr-5 pl-2.5 text-sm font-semibold shadow-2xl backdrop-blur"
       >
-        <span className="grid size-7 place-items-center rounded-full bg-lime text-ink-950">
+        <span className="grid size-7 place-items-center rounded-full bg-lime text-on-accent">
           <Check size={16} strokeWidth={3} />
         </span>
         {toast.text}

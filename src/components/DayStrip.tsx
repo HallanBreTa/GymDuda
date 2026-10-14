@@ -17,17 +17,17 @@ function Indicator({ plan, workoutsById, selected }: { plan?: DayPlan; workoutsB
   if (!plan) return <span className="h-3" />
   switch (plan.kind) {
     case 'done':
-      return <Check size={12} strokeWidth={4} className={selected ? 'text-ink-950' : 'text-lime'} />
+      return <Check size={12} strokeWidth={4} className={selected ? 'text-on-accent' : 'text-accent'} />
     case 'missed':
-      return <X size={12} strokeWidth={4} className={selected ? 'text-ink-950' : 'text-red-400'} />
+      return <X size={12} strokeWidth={4} className={selected ? 'text-on-accent' : 'text-red-400'} />
     case 'replaced':
-      return <ArrowRightLeft size={12} strokeWidth={3} className={selected ? 'text-ink-950' : 'text-coral'} />
+      return <ArrowRightLeft size={12} strokeWidth={3} className={selected ? 'text-on-accent' : 'text-coral'} />
     case 'in_progress':
     case 'pending':
     case 'planned': {
       const id = plan.kind === 'in_progress' ? plan.session.workoutId : plan.workoutId
       const color = workoutsById.get(id)?.color
-      const dot = selected ? 'bg-ink-950' : color ? COLOR_STYLES[color].dot : 'bg-ink-400'
+      const dot = selected ? 'bg-on-accent' : color ? COLOR_STYLES[color].dot : 'bg-ink-400'
       return (
         <span className="grid h-3 place-items-center">
           <span className={`size-1.5 rounded-full ${dot} ${plan.kind === 'in_progress' ? 'animate-pulse' : ''} ${plan.kind === 'planned' && !selected ? 'opacity-50' : ''}`} />
@@ -37,7 +37,7 @@ function Indicator({ plan, workoutsById, selected }: { plan?: DayPlan; workoutsB
     default:
       return (
         <span className="grid h-3 place-items-center">
-          <span className={`size-1.5 rounded-full ${selected ? 'bg-ink-950/30' : 'bg-ink-700'}`} />
+          <span className={`size-1.5 rounded-full ${selected ? 'bg-on-accent/30' : 'bg-ink-700'}`} />
         </span>
       )
   }
@@ -83,10 +83,10 @@ export function DayStrip({ weekStart, today, selectedDate, plans, workoutsById, 
               aria-current={isToday ? 'date' : undefined}
               aria-pressed={selected}
               className={`relative flex flex-col items-center gap-0.5 rounded-2xl py-2.5 transition active:scale-95 ${
-                selected ? 'bg-lime text-ink-950' : 'bg-ink-900 text-ink-300 hover:bg-ink-800'
+                selected ? 'bg-lime text-on-accent' : 'bg-ink-900 text-ink-300 hover:bg-ink-800'
               } ${date < today && !selected ? 'opacity-70' : ''}`}
             >
-              <span className={`text-[11px] font-semibold uppercase ${selected ? 'text-ink-950/70' : 'text-ink-400'}`}>
+              <span className={`text-[11px] font-semibold uppercase ${selected ? 'text-on-accent/70' : 'text-ink-400'}`}>
                 {WEEKDAYS_SHORT[i]}
               </span>
               <span className="text-base font-bold tabular-nums">{parseISODate(date).getDate()}</span>
@@ -94,7 +94,7 @@ export function DayStrip({ weekStart, today, selectedDate, plans, workoutsById, 
               {isToday && !selected && <span className="absolute inset-0 rounded-2xl ring-1 ring-lime/50 ring-inset" />}
               {/* Atividade extra no dia: ponto coral no canto */}
               {(activities[date] ?? []).some((a) => a.mode === 'extra') && (
-                <span className={`absolute top-1.5 right-1.5 size-1.5 rounded-full ${selected ? 'bg-ink-950' : 'bg-coral'}`} />
+                <span className={`absolute top-1.5 right-1.5 size-1.5 rounded-full ${selected ? 'bg-on-accent' : 'bg-coral'}`} />
               )}
             </button>
           )

@@ -65,10 +65,10 @@ export const COLOR_STYLES: Record<
   WorkoutColor,
   { solid: string; soft: string; text: string; border: string; dot: string }
 > = {
-  lime: { solid: 'bg-lime text-ink-950', soft: 'bg-lime/12', text: 'text-lime', border: 'border-lime/40', dot: 'bg-lime' },
-  sky: { solid: 'bg-sky-400 text-ink-950', soft: 'bg-sky-400/12', text: 'text-sky-400', border: 'border-sky-400/40', dot: 'bg-sky-400' },
-  orange: { solid: 'bg-orange-400 text-ink-950', soft: 'bg-orange-400/12', text: 'text-orange-400', border: 'border-orange-400/40', dot: 'bg-orange-400' },
-  pink: { solid: 'bg-pink-400 text-ink-950', soft: 'bg-pink-400/12', text: 'text-pink-400', border: 'border-pink-400/40', dot: 'bg-pink-400' },
-  violet: { solid: 'bg-violet-400 text-ink-950', soft: 'bg-violet-400/12', text: 'text-violet-400', border: 'border-violet-400/40', dot: 'bg-violet-400' },
-  teal: { solid: 'bg-teal-400 text-ink-950', soft: 'bg-teal-400/12', text: 'text-teal-400', border: 'border-teal-400/40', dot: 'bg-teal-400' },
+  lime: { solid: 'bg-lime text-on-accent', soft: 'bg-lime/12', text: 'text-accent', border: 'border-lime/40', dot: 'bg-lime' },
+  sky: { solid: 'bg-sky-400 text-on-accent', soft: 'bg-sky-400/12', text: 'text-sky-400', border: 'border-sky-400/40', dot: 'bg-sky-400' },
+  orange: { solid: 'bg-orange-400 text-on-accent', soft: 'bg-orange-400/12', text: 'text-orange-400', border: 'border-orange-400/40', dot: 'bg-orange-400' },
+  pink: { solid: 'bg-pink-400 text-on-accent', soft: 'bg-pink-400/12', text: 'text-pink-400', border: 'border-pink-400/40', dot: 'bg-pink-400' },
+  violet: { solid: 'bg-violet-400 text-on-accent', soft: 'bg-violet-400/12', text: 'text-violet-400', border: 'border-violet-400/40', dot: 'bg-violet-400' },
+  teal: { solid: 'bg-teal-400 text-on-accent', soft: 'bg-teal-400/12', text: 'text-teal-400', border: 'border-teal-400/40', dot: 'bg-teal-400' },
 }

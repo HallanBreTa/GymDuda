@@ -5,7 +5,7 @@ import { COLOR_STYLES, workoutBadge } from '../utils'
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'destructive'
 
 const BUTTON_VARIANTS: Record<ButtonVariant, string> = {
-  primary: 'bg-lime text-ink-950 hover:brightness-110 font-bold',
+  primary: 'bg-lime text-on-accent hover:brightness-110 font-bold',
   secondary: 'bg-ink-800 text-ink-100 hover:bg-ink-700 font-semibold',
   ghost: 'text-ink-300 hover:bg-ink-800 hover:text-ink-100 font-semibold',
   danger: 'bg-red-500/15 text-red-400 hover:bg-red-500/25 font-semibold',

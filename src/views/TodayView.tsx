@@ -123,7 +123,7 @@ export function TodayView({
             <button
               type="button"
               onClick={() => onSelectDate(today)}
-              className="h-10 rounded-full bg-lime/12 px-4 text-sm font-semibold text-lime transition hover:bg-lime/20"
+              className="h-10 rounded-full bg-lime/12 px-4 text-sm font-semibold text-accent transition hover:bg-lime/20"
             >
               Hoje
             </button>
@@ -455,11 +455,11 @@ function DoneSection({
       </Hero>
 
       {isToday && (
-        <div className="animate-pop-in flex items-center gap-3 rounded-2xl bg-lime p-4 text-ink-950">
+        <div className="animate-pop-in flex items-center gap-3 rounded-2xl bg-lime p-4 text-on-accent">
           <Trophy size={26} className="shrink-0" />
           <div className="min-w-0">
             <p className="font-black">Treino concluído!</p>
-            <p className="truncate text-sm font-medium text-ink-950/75">{nextLabel}</p>
+            <p className="truncate text-sm font-medium text-on-accent/75">{nextLabel}</p>
           </div>
         </div>
       )}

@@ -37,14 +37,14 @@ export function WorkoutPicker({ title, workouts, queue, nextId, currentId, onPic
           <p className="flex items-center gap-2 font-semibold">
             <span className="truncate">{w.name}</span>
             {w.id === nextId && (
-              <span className="shrink-0 rounded-full bg-lime px-1.5 py-px text-[10px] font-black text-ink-950 uppercase">Próximo</span>
+              <span className="shrink-0 rounded-full bg-lime px-1.5 py-px text-[10px] font-black text-on-accent uppercase">Próximo</span>
             )}
           </p>
           <p className="truncate text-[13px] text-ink-400">
             {w.focus || 'Sem foco definido'} • {w.exercises.length} exercícios
           </p>
         </div>
-        {currentId === w.id && <Check size={20} className="text-lime" />}
+        {currentId === w.id && <Check size={20} className="text-accent" />}
       </button>
     </li>
   )

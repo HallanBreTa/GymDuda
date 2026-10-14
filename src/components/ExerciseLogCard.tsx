@@ -39,7 +39,7 @@ export function ExerciseLogCard(props: Props) {
     <div className="flex items-start gap-3">
       <span
         className={`mt-0.5 grid size-7 shrink-0 place-items-center rounded-full text-xs font-black transition ${
-          complete ? 'bg-lime text-ink-950' : 'bg-ink-800 text-ink-300'
+          complete ? 'bg-lime text-on-accent' : 'bg-ink-800 text-ink-300'
         }`}
       >
         {complete ? <Check size={15} strokeWidth={3.5} /> : index + 1}
@@ -55,7 +55,7 @@ export function ExerciseLogCard(props: Props) {
               {exercise.load && ` • ${exercise.load}`}
             </>
           )}
-          {isEdit && <span className={complete ? 'text-lime' : ''}> • {doneCount}/{sets.length} séries</span>}
+          {isEdit && <span className={complete ? 'text-accent' : ''}> • {doneCount}/{sets.length} séries</span>}
         </p>
       </div>
       {isEdit && complete && (
@@ -165,7 +165,7 @@ export function ExerciseLogCard(props: Props) {
               <ul className="space-y-1">
                 {sets.map((s, i) => (
                   <li key={i} className="flex items-center gap-3 text-sm">
-                    <span className="w-5 text-center font-bold text-lime tabular-nums">{i + 1}</span>
+                    <span className="w-5 text-center font-bold text-accent tabular-nums">{i + 1}</span>
                     <span className="tabular-nums">{s.load.replace('.', ',')} kg</span>
                     <span className="text-ink-400">×</span>
                     <span className="tabular-nums">{s.reps} reps</span>

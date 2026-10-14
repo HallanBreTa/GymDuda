@@ -8,8 +8,8 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 're
 import { fmt, niceScale } from '../chartScale'
 
 type Tone = 'lime' | 'coral'
-const TONE_BG: Record<Tone, string> = { lime: 'bg-lime', coral: 'bg-coral' }
-const TONE_HEX: Record<Tone, string> = { lime: 'var(--color-lime)', coral: 'var(--color-coral)' }
+const TONE_BG: Record<Tone, string> = { lime: 'bg-chart', coral: 'bg-coral' }
+const TONE_HEX: Record<Tone, string> = { lime: 'var(--color-chart)', coral: 'var(--color-coral)' }
 
 /* ---------- Cartão com alternância gráfico ↔ tabela ---------- */
 
@@ -205,7 +205,7 @@ export function BarList({ rows }: { rows: { label: string; value: number; displa
             <span className="shrink-0 text-ink-300 tabular-nums">{r.display}</span>
           </div>
           <div className="h-2.5 rounded-r-[4px] bg-ink-850">
-            <div className="h-full rounded-r-[4px] bg-lime" style={{ width: `${(r.value / max) * 100}%` }} />
+            <div className="h-full rounded-r-[4px] bg-chart" style={{ width: `${(r.value / max) * 100}%` }} />
           </div>
         </li>
       ))}

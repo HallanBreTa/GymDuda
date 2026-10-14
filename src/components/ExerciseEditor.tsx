@@ -61,7 +61,7 @@ export function ExerciseEditor({ exercise, onSave, onClose }: Props) {
                 type="button"
                 aria-label="Diminuir séries"
                 onClick={() => set('sets', Math.max(1, draft.sets - 1))}
-                className="grid h-full w-12 place-items-center text-ink-300 active:text-lime"
+                className="grid h-full w-12 place-items-center text-ink-300 active:text-accent"
               >
                 <Minus size={18} />
               </button>
@@ -70,7 +70,7 @@ export function ExerciseEditor({ exercise, onSave, onClose }: Props) {
                 type="button"
                 aria-label="Aumentar séries"
                 onClick={() => set('sets', Math.min(20, draft.sets + 1))}
-                className="grid h-full w-12 place-items-center text-ink-300 active:text-lime"
+                className="grid h-full w-12 place-items-center text-ink-300 active:text-accent"
               >
                 <Plus size={18} />
               </button>
@@ -88,7 +88,7 @@ export function ExerciseEditor({ exercise, onSave, onClose }: Props) {
               type="button"
               onClick={() => set('reps', r)}
               className={`h-9 shrink-0 rounded-full px-3.5 text-sm font-semibold transition ${
-                draft.reps === r ? 'bg-lime text-ink-950' : 'bg-ink-800 text-ink-300 hover:bg-ink-700'
+                draft.reps === r ? 'bg-lime text-on-accent' : 'bg-ink-800 text-ink-300 hover:bg-ink-700'
               }`}
             >
               {r}

@@ -5,7 +5,9 @@ import { Toast, type ToastMessage } from './components/Toast'
 import { WorkoutEditor } from './components/WorkoutEditor'
 import { useGymStore } from './hooks/useGymStore'
 import { useToday } from './hooks/useToday'
+import { useTheme } from './theme'
 import type { Activity, Tab, Workout } from './types'
+import { SettingsView } from './views/SettingsView'
 import { StatsView } from './views/StatsView'
 import { TodayView } from './views/TodayView'
 import { WeekView } from './views/WeekView'
@@ -27,6 +29,7 @@ export default function App() {
   const store = useGymStore({ onSyncReplaced: () => setToast({ id: Date.now(), text: 'Dados atualizados com a versão da nuvem' }) })
   const { state } = store
   const today = useToday()
+  const [theme, setTheme] = useTheme()
 
   const [tab, setTab] = useState<Tab>('today')
   const [editor, setEditor] = useState<EditorState>(null)
@@ -85,7 +88,6 @@ export default function App() {
           <WorkoutsView
             state={state}
             today={today}
-            sync={store.sync}
             onCreate={() => setEditor({ workout: null })}
             onEdit={(workout) => setEditor({ workout })}
             onDelete={store.deleteWorkout}
@@ -104,6 +106,7 @@ export default function App() {
           />
         )}
         {tab === 'stats' && <StatsView state={state} today={today} />}
+        {tab === 'settings' && <SettingsView sync={store.sync} theme={theme} onThemeChange={setTheme} />}
       </main>
 
       <BottomNav tab={tab} onChange={changeTab} />

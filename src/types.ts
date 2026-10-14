@@ -94,4 +94,4 @@ export type GymState = {
   startDate: string
 }
 
-export type Tab = 'today' | 'workouts' | 'week' | 'stats'
+export type Tab = 'today' | 'workouts' | 'week' | 'stats' | 'settings'

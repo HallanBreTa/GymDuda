@@ -7,9 +7,9 @@ export type ConnectResult = 'ok' | 'unauthorized' | 'error'
 export const SYNC_LABELS: Record<SyncStatus, { text: string; tone: string }> = {
   off: { text: 'Desativada · dados só neste aparelho', tone: 'text-ink-400' },
   syncing: { text: 'Sincronizando…', tone: 'text-sky-400' },
-  synced: { text: 'Sincronizado com a nuvem', tone: 'text-lime' },
+  synced: { text: 'Sincronizado com a nuvem', tone: 'text-accent' },
   offline: { text: 'Sem conexão · envia quando voltar', tone: 'text-amber-400' },
-  unauthorized: { text: 'Chave inválida · conecte de novo', tone: 'text-red-400' },
+  unauthorized: { text: 'Senha inválida · conecte de novo', tone: 'text-red-400' },
   error: { text: 'Erro ao sincronizar · tentando de novo depois', tone: 'text-red-400' },
 }
 

@@ -1,4 +1,4 @@
-import { CalendarDays, ChartColumn, Dumbbell, Flame } from 'lucide-react'
+import { CalendarDays, ChartColumn, Dumbbell, Flame, Settings } from 'lucide-react'
 import type { Tab } from '../types'
 
 const TABS: { id: Tab; label: string; icon: typeof Flame }[] = [
@@ -6,6 +6,7 @@ const TABS: { id: Tab; label: string; icon: typeof Flame }[] = [
   { id: 'workouts', label: 'Treinos', icon: Dumbbell },
   { id: 'week', label: 'Semana', icon: CalendarDays },
   { id: 'stats', label: 'Dados', icon: ChartColumn },
+  { id: 'settings', label: 'Ajustes', icon: Settings },
 ]
 
 type Props = { tab: Tab; onChange: (tab: Tab) => void }
@@ -27,7 +28,7 @@ export function TopBar({ tab, onChange }: Props) {
                 tab === id ? 'bg-ink-700 text-ink-100' : 'text-ink-400 hover:text-ink-100'
               }`}
             >
-              <Icon size={17} className={tab === id ? 'text-lime' : ''} />
+              <Icon size={17} className={tab === id ? 'text-accent' : ''} />
               {label}
             </button>
           ))}
@@ -44,7 +45,7 @@ export function BottomNav({ tab, onChange }: Props) {
       aria-label="Navegação principal"
       className="fixed inset-x-0 bottom-0 z-40 border-t border-ink-800/80 bg-ink-950/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:hidden"
     >
-      <div className="mx-auto grid max-w-lg grid-cols-4">
+      <div className="mx-auto grid max-w-lg grid-cols-5">
         {TABS.map(({ id, label, icon: Icon }) => {
           const active = tab === id
           return (
@@ -55,7 +56,7 @@ export function BottomNav({ tab, onChange }: Props) {
               aria-current={active ? 'page' : undefined}
               className="flex h-16 flex-col items-center justify-center gap-1 transition active:scale-95"
             >
-              <span className={`grid h-8 w-14 place-items-center rounded-full transition ${active ? 'bg-lime/15 text-lime' : 'text-ink-400'}`}>
+              <span className={`grid h-8 w-14 place-items-center rounded-full transition ${active ? 'bg-lime/15 text-accent' : 'text-ink-400'}`}>
                 <Icon size={21} strokeWidth={active ? 2.5 : 2} />
               </span>
               <span className={`text-[11px] font-semibold ${active ? 'text-ink-100' : 'text-ink-400'}`}>{label}</span>
@@ -70,11 +71,11 @@ export function BottomNav({ tab, onChange }: Props) {
 export function Logo() {
   return (
     <div className="flex items-center gap-2">
-      <span className="grid size-8 place-items-center rounded-lg bg-lime text-ink-950">
+      <span className="grid size-8 place-items-center rounded-lg bg-lime text-on-accent">
         <Dumbbell size={18} strokeWidth={2.5} />
       </span>
       <span className="text-lg font-black tracking-tight">
-        Gym<span className="text-lime">Duda</span>
+        Gym<span className="text-accent">Duda</span>
       </span>
     </div>
   )

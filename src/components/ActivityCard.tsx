@@ -7,7 +7,7 @@ import type { Activity, ActivityType } from '../types'
 export function ActivityBadge({ type, size = 'md' }: { type: ActivityType; size?: 'sm' | 'md' }) {
   const Icon = ACTIVITY_META[type].icon
   return (
-    <span className={`grid shrink-0 place-items-center rounded-full bg-coral text-ink-950 ${size === 'sm' ? 'size-8' : 'size-11'}`}>
+    <span className={`grid shrink-0 place-items-center rounded-full bg-coral text-on-accent ${size === 'sm' ? 'size-8' : 'size-11'}`}>
       <Icon size={size === 'sm' ? 16 : 21} strokeWidth={2.4} />
     </span>
   )
@@ -37,7 +37,7 @@ export function ActivityCard({ activity, onClick, highlight }: Props) {
           <span className="truncate font-semibold">{meta.label}</span>
           <span
             className={`shrink-0 rounded-full px-1.5 py-px text-[10px] font-black uppercase ${
-              replaced ? 'bg-coral text-ink-950' : 'bg-ink-950/50 text-coral'
+              replaced ? 'bg-coral text-on-accent' : 'bg-ink-950/50 text-coral'
             }`}
           >
             {replaced ? 'No lugar do treino' : 'Extra'}
