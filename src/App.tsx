@@ -83,6 +83,7 @@ export default function App() {
         {tab === 'workouts' && (
           <WorkoutsView
             state={state}
+            today={today}
             sync={store.sync}
             onCreate={() => setEditor({ workout: null })}
             onEdit={(workout) => setEditor({ workout })}

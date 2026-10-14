@@ -1,7 +1,8 @@
-import { ChevronRight, Dumbbell, LayoutGrid, Plus, Trash2 } from 'lucide-react'
+import { ChevronRight, Dumbbell, FileText, LayoutGrid, Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { BottomSheet } from '../components/BottomSheet'
 import { ConfirmDialog } from '../components/ConfirmDialog'
+import { ExportSheet } from '../components/ExportSheet'
 import { SyncIcon, SyncSheet } from '../components/SyncSheet'
 import { Button, EmptyState, WorkoutBadge } from '../components/ui'
 import { TEMPLATES, type Template } from '../data/templates'
@@ -10,6 +11,7 @@ import type { GymState, Workout } from '../types'
 
 type Props = {
   state: GymState
+  today: string
   sync: CloudSync
   onCreate: () => void
   onEdit: (workout: Workout) => void
@@ -17,11 +19,12 @@ type Props = {
   onApplyTemplate: (key: string) => void
 }
 
-export function WorkoutsView({ state, sync, onCreate, onEdit, onDelete, onApplyTemplate }: Props) {
+export function WorkoutsView({ state, today, sync, onCreate, onEdit, onDelete, onApplyTemplate }: Props) {
   const [toDelete, setToDelete] = useState<Workout | null>(null)
   const [templatesOpen, setTemplatesOpen] = useState(false)
   const [templateToApply, setTemplateToApply] = useState<Template | null>(null)
   const [syncOpen, setSyncOpen] = useState(false)
+  const [exportOpen, setExportOpen] = useState(false)
 
   const nextId = state.queue[state.pointer]
 
@@ -63,6 +66,21 @@ export function WorkoutsView({ state, sync, onCreate, onEdit, onDelete, onApplyT
         <div className="flex-1">
           <p className="font-semibold">Sincronização</p>
           <p className="text-[13px] text-ink-400">{SYNC_LABELS[sync.status].text}</p>
+        </div>
+        <ChevronRight size={20} className="text-ink-400" />
+      </button>
+
+      <button
+        type="button"
+        onClick={() => setExportOpen(true)}
+        className="flex w-full items-center gap-3 rounded-2xl border border-ink-800 bg-ink-900 p-4 text-left transition hover:border-ink-700 active:scale-[0.99]"
+      >
+        <span className="grid size-11 place-items-center rounded-xl bg-violet-400/12 text-violet-400">
+          <FileText size={20} />
+        </span>
+        <div className="flex-1">
+          <p className="font-semibold">Exportar log para IA</p>
+          <p className="text-[13px] text-ink-400">Cargas, repetições e progressão para avaliar</p>
         </div>
         <ChevronRight size={20} className="text-ink-400" />
       </button>
@@ -166,6 +184,7 @@ export function WorkoutsView({ state, sync, onCreate, onEdit, onDelete, onApplyT
       </BottomSheet>
 
       <SyncSheet sync={sync} open={syncOpen} onClose={() => setSyncOpen(false)} />
+      <ExportSheet state={state} today={today} open={exportOpen} onClose={() => setExportOpen(false)} />
 
       <ConfirmDialog
         open={templateToApply !== null}
