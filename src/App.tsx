@@ -106,7 +106,20 @@ export default function App() {
           />
         )}
         {tab === 'stats' && <StatsView state={state} today={today} />}
-        {tab === 'settings' && <SettingsView sync={store.sync} theme={theme} onThemeChange={setTheme} />}
+        {tab === 'settings' && (
+          <SettingsView
+            state={state}
+            sync={store.sync}
+            theme={theme}
+            onThemeChange={setTheme}
+            onImport={(plan, mode, useDays) => {
+              store.importPlan(plan.workouts, mode, useDays ? plan.trainingDays : null)
+              changeTab('workouts')
+              const n = plan.workouts.length
+              setToast({ id: Date.now(), text: `${n} ${n === 1 ? 'treino importado' : 'treinos importados'}` })
+            }}
+          />
+        )}
       </main>
 
       <BottomNav tab={tab} onChange={changeTab} />

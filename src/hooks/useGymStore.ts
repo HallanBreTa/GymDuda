@@ -377,6 +377,30 @@ export function useGymStore({ onSyncReplaced }: { onSyncReplaced?: () => void } 
         })
       },
 
+      /**
+       * Importa treinos (ex.: JSON gerado por IA). 'replace' troca a divisão como um template
+       * (histórico concluído é mantido); 'add' coloca os novos treinos no fim da fila.
+       */
+      importPlan(workouts: Workout[], mode: 'replace' | 'add', trainingDays: boolean[] | null) {
+        setState((s) => {
+          const days = trainingDays ?? s.trainingDays
+          if (mode === 'add') {
+            const next = { ...s, workouts: [...s.workouts, ...workouts], trainingDays: days }
+            return withQueue(next, [...s.queue, ...workouts.map((w) => w.id)])
+          }
+          const history = Object.fromEntries(Object.entries(s.history).filter(([, log]) => log.status !== 'in_progress'))
+          return {
+            ...s,
+            workouts,
+            queue: workouts.map((w) => w.id),
+            pointer: 0,
+            trainingDays: days,
+            history,
+            startDate: todayISO(),
+          }
+        })
+      },
+
       resetAll() {
         setState(createInitialState())
       },

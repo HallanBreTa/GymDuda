@@ -1,8 +1,11 @@
-import { MonitorSmartphone, Moon, Sun } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { ChevronRight, FileJson, MonitorSmartphone, Moon, Sun } from 'lucide-react'
+import { useState, type ReactNode } from 'react'
+import { ImportSheet } from '../components/ImportSheet'
 import { SyncPanel } from '../components/SyncPanel'
+import type { ImportedPlan } from '../domain/importWorkouts'
 import type { CloudSync } from '../hooks/useCloudSync'
 import type { ThemePref } from '../theme'
+import type { GymState } from '../types'
 
 const THEMES: { value: ThemePref; label: string; icon: typeof Sun }[] = [
   { value: 'dark', label: 'Escuro', icon: Moon },
@@ -20,13 +23,20 @@ function Section({ title, description, children }: { title: string; description?
   )
 }
 
-type Props = { sync: CloudSync; theme: ThemePref; onThemeChange: (theme: ThemePref) => void }
+type Props = {
+  state: GymState
+  sync: CloudSync
+  theme: ThemePref
+  onThemeChange: (theme: ThemePref) => void
+  onImport: (plan: ImportedPlan, mode: 'replace' | 'add', useDays: boolean) => void
+}
 
-export function SettingsView({ sync, theme, onThemeChange }: Props) {
+export function SettingsView({ state, sync, theme, onThemeChange, onImport }: Props) {
+  const [importOpen, setImportOpen] = useState(false)
   return (
     <div className="space-y-5">
       <header>
-        <p className="text-sm font-medium text-ink-400">Preferências deste aparelho</p>
+        <p className="text-sm font-medium text-ink-400">Preferências e ferramentas</p>
         <h1 className="text-3xl font-black tracking-tight">Ajustes</h1>
       </header>
 
@@ -51,6 +61,24 @@ export function SettingsView({ sync, theme, onThemeChange }: Props) {
             )
           })}
         </div>
+      </Section>
+
+      <Section title="Importar treinos" description="Cole um JSON gerado pela IA para montar seus treinos em segundos.">
+        <button
+          type="button"
+          onClick={() => setImportOpen(true)}
+          className="flex w-full items-center gap-3 rounded-2xl bg-ink-850 p-3 text-left transition hover:bg-ink-800 active:scale-[0.99]"
+        >
+          <span className="grid size-11 place-items-center rounded-xl bg-sky-400/12 text-sky-400">
+            <FileJson size={20} />
+          </span>
+          <div className="flex-1">
+            <p className="font-semibold">Importação rápida</p>
+            <p className="text-[13px] text-ink-400">Pedido pronto para a IA, exemplo e colar JSON</p>
+          </div>
+          <ChevronRight size={20} className="text-ink-400" />
+        </button>
+        <ImportSheet state={state} open={importOpen} onClose={() => setImportOpen(false)} onImport={onImport} />
       </Section>
 
       <Section title="Sincronização" description="Salva seus treinos na nuvem e mantém todos os seus aparelhos iguais.">
