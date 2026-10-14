@@ -3,7 +3,8 @@ import { ACTIVITY_META } from '../data/activityTypes'
 import type { Activity, GymState, SetLog, WorkoutSession } from '../types'
 import { addDays, diffDays, parseISODate, WEEKDAYS_SHORT, weekdayOf } from '../utils'
 import { activityDetails } from './activities'
-import { formatSet, parseDecimal, sessionStats } from './sets'
+import { formatSet, sessionStats } from './sets'
+import { estimated1RM } from './stats'
 
 export type ExportOptions = {
   /** Primeiro dia incluído (yyyy-mm-dd); null = todo o histórico. */
@@ -26,14 +27,6 @@ const fmtDate = (iso: string) => {
 }
 
 const fmtNumber = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 1 })
-
-/** 1RM estimado (Epley), considerando as repetições na reserva como possíveis. */
-function estimated1RM(set: SetLog) {
-  const load = parseDecimal(set.load)
-  const reps = parseDecimal(set.reps)
-  if (!load || !reps) return 0
-  return load * (1 + (reps + (parseDecimal(set.rir) ?? 0)) / 30)
-}
 
 function bestSet(sets: SetLog[]) {
   return sets.reduce<SetLog | null>((best, s) => (!best || estimated1RM(s) > estimated1RM(best) ? s : best), null)

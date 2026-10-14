@@ -6,6 +6,7 @@ import { WorkoutEditor } from './components/WorkoutEditor'
 import { useGymStore } from './hooks/useGymStore'
 import { useToday } from './hooks/useToday'
 import type { Activity, Tab, Workout } from './types'
+import { StatsView } from './views/StatsView'
 import { TodayView } from './views/TodayView'
 import { WeekView } from './views/WeekView'
 import { WorkoutsView } from './views/WorkoutsView'
@@ -102,6 +103,7 @@ export default function App() {
             onAddActivity={openNewActivity}
           />
         )}
+        {tab === 'stats' && <StatsView state={state} today={today} />}
       </main>
 
       <BottomNav tab={tab} onChange={changeTab} />

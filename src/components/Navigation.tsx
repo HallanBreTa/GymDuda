@@ -1,10 +1,11 @@
-import { CalendarDays, Dumbbell, Flame } from 'lucide-react'
+import { CalendarDays, ChartColumn, Dumbbell, Flame } from 'lucide-react'
 import type { Tab } from '../types'
 
 const TABS: { id: Tab; label: string; icon: typeof Flame }[] = [
   { id: 'today', label: 'Hoje', icon: Flame },
   { id: 'workouts', label: 'Treinos', icon: Dumbbell },
   { id: 'week', label: 'Semana', icon: CalendarDays },
+  { id: 'stats', label: 'Dados', icon: ChartColumn },
 ]
 
 type Props = { tab: Tab; onChange: (tab: Tab) => void }
@@ -43,7 +44,7 @@ export function BottomNav({ tab, onChange }: Props) {
       aria-label="Navegação principal"
       className="fixed inset-x-0 bottom-0 z-40 border-t border-ink-800/80 bg-ink-950/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:hidden"
     >
-      <div className="mx-auto grid max-w-lg grid-cols-3">
+      <div className="mx-auto grid max-w-lg grid-cols-4">
         {TABS.map(({ id, label, icon: Icon }) => {
           const active = tab === id
           return (
