@@ -310,7 +310,10 @@ export function useGymStore({ onSyncReplaced }: { onSyncReplaced?: () => void } 
             finishedAt: Date.now(),
             pointerBefore: pointer !== s.pointer ? s.pointer : undefined,
           }
-          return { ...withHistory(s, date, done), pointer }
+          // Registrou um treino antes do início da fila (ex.: importou o plano hoje, mas começou
+          // na terça): a fila passa a valer a partir desse dia.
+          const startDate = date < s.startDate ? date : s.startDate
+          return { ...withHistory(s, date, done), pointer, startDate }
         })
       },
 

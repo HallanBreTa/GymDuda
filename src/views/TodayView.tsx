@@ -105,7 +105,11 @@ export function TodayView({
     state.workouts.length > 0 &&
     (plan.kind === 'missed' || plan.kind === 'rest' || plan.kind === 'rest_logged' || plan.kind === 'before_start')
   const logPastButton = canLogPast && (
-    <Button variant={plan.kind === 'missed' ? 'primary' : 'secondary'} className="mt-6" onClick={() => setPickerOpen(true)}>
+    <Button
+      variant={plan.kind === 'missed' || plan.kind === 'before_start' ? 'primary' : 'secondary'}
+      className="mt-6"
+      onClick={() => setPickerOpen(true)}
+    >
       <History size={18} /> Registrar treino feito {pastWhen}
     </Button>
   )
@@ -419,7 +423,12 @@ export function TodayView({
       )}
 
       {plan.kind === 'before_start' && (
-        <StatusCard icon={<CalendarClock size={28} />} iconClass="text-ink-400" title="Sem histórico" text="Você ainda não usava a fila nesse dia.">
+        <StatusCard
+          icon={<CalendarClock size={28} />}
+          iconClass="text-ink-400"
+          title="Antes do início da fila"
+          text="Sua fila começou depois deste dia. Treinou nele? Registre o treino e a fila passa a contar a partir daqui."
+        >
           {logPastButton}
         </StatusCard>
       )}
