@@ -1,4 +1,5 @@
 /** Estatísticas para a aba Dados. Usa a mesma projeção da fila, então "falta" bate com a aba Semana. */
+import { CARDIO_TYPES } from '../data/activityTypes'
 import type { ActivityType, GymState, SetLog, WorkoutSession } from '../types'
 import { addDays, diffDays, parseISODate, startOfWeek, weekdayOf } from '../utils'
 import { projectDays } from './queue'
@@ -14,7 +15,17 @@ export type WeekdayStat = {
   attended: number
 }
 
-export type Bucket = { start: string; label: string; sessions: number; volume: number; activityMin: number; current: boolean }
+export type Bucket = {
+  start: string
+  label: string
+  sessions: number
+  volume: number
+  activityMin: number
+  cardioMin: number
+  /** Dias em que o treino foi trocado por uma atividade avulsa. */
+  replaced: number
+  current: boolean
+}
 
 export type ProgressPoint = { date: string; set: SetLog; load: number; e1rm: number }
 
@@ -29,6 +40,10 @@ export type Stats = {
   missed: number
   extras: number
   activityMin: number
+  /** Cardio (CARDIO_TYPES): tempo, sessões e distância, extras e substituições somados. */
+  cardio: { minutes: number; count: number; km: number }
+  /** Treinos trocados por atividade avulsa ("no lugar do treino"). */
+  replaced: { count: number; byCardio: number; minutes: number }
   weekdays: WeekdayStat[]
   bucketUnit: 'week' | 'month'
   buckets: Bucket[]
@@ -91,6 +106,8 @@ export function computeStats(state: GymState, from: string, today: string): Stat
     sessions: 0,
     volume: 0,
     activityMin: 0,
+    cardioMin: 0,
+    replaced: 0,
     current: start === currentStart,
   }))
   const bucketOf = (date: string) => {
@@ -106,6 +123,8 @@ export function computeStats(state: GymState, from: string, today: string): Stat
   let volume = 0
   let extras = 0
   let activityMin = 0
+  const cardio = { minutes: 0, count: 0, km: 0 }
+  const replaced = { count: 0, byCardio: 0, minutes: 0 }
 
   for (const date of dates) {
     const plan = plans[date]
@@ -128,6 +147,19 @@ export function computeStats(state: GymState, from: string, today: string): Stat
       entry.minutes += a.durationMin
       entry.count++
       byActivity.set(a.type, entry)
+      const isCardio = CARDIO_TYPES.has(a.type)
+      if (isCardio) {
+        cardio.minutes += a.durationMin
+        cardio.count++
+        cardio.km += a.distanceKm ?? 0
+        if (bucket) bucket.cardioMin += a.durationMin
+      }
+      if (a.mode === 'replace') {
+        replaced.count++
+        replaced.minutes += a.durationMin
+        if (isCardio) replaced.byCardio++
+        if (bucket) bucket.replaced++
+      }
     }
 
     if (plan.kind !== 'done') continue
@@ -172,6 +204,8 @@ export function computeStats(state: GymState, from: string, today: string): Stat
     missed: weekdays.reduce((n, w) => n + w.missed, 0),
     extras,
     activityMin,
+    cardio,
+    replaced,
     weekdays,
     bucketUnit: unit,
     buckets,

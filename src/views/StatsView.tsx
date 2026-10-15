@@ -75,6 +75,7 @@ export function StatsView({ state, today }: { state: GymState; today: string }) 
       ) : (
         <>
           <Kpis stats={stats} />
+          <CardioSection stats={stats} />
           <WeekdayCharts stats={stats} />
           <TimeCharts stats={stats} />
           <ExerciseProgress stats={stats} />
@@ -103,6 +104,69 @@ function Kpis({ stats }: { stats: Stats }) {
           <p className="mt-0.5 text-[12px] text-ink-400">{t.detail}</p>
         </div>
       ))}
+    </div>
+  )
+}
+
+/* ---------- Cardio e treinos trocados ---------- */
+
+function CardioSection({ stats }: { stats: Stats }) {
+  const { cardio, replaced } = stats
+  if (!cardio.count && !replaced.count) return null
+  const weekly = stats.bucketUnit === 'week'
+  const unit = weekly ? 'semana' : 'mês'
+  const periodLabel = (b: Stats['buckets'][number]) =>
+    `${weekly ? `Semana de ${formatShortDate(b.start)}` : b.label}${b.current ? ' (em andamento)' : ''}`
+  const perWeek = cardio.minutes / Math.max(1, stats.days / 7)
+  const trainingDays = stats.planned // já inclui os dias substituídos
+
+  const tiles = [
+    {
+      label: 'Cardio feito',
+      value: formatDuration(cardio.minutes),
+      detail: cardio.count
+        ? `${cardio.count} ${cardio.count === 1 ? 'sessão' : 'sessões'}${cardio.km ? ` · ${fmt(cardio.km)} km` : ''} · ~${formatDuration(Math.round(perWeek))}/semana`
+        : 'nenhum no período',
+    },
+    {
+      label: 'Treinos trocados',
+      value: fmt(replaced.count),
+      detail: replaced.count
+        ? `${replaced.byCardio === replaced.count ? 'todos' : replaced.byCardio} por cardio${trainingDays ? ` · ${pct(replaced.count, trainingDays)}% dos dias de treino` : ''}`
+        : 'nenhuma troca no período',
+    },
+  ]
+
+  const columns: Column[] = stats.buckets.map((b) => ({
+    label: b.label,
+    value: b.cardioMin,
+    tipValue: `${formatDuration(b.cardioMin)}${b.replaced ? ` · ${b.replaced} ${b.replaced === 1 ? 'troca' : 'trocas'}` : ''}`,
+    tipLabel: periodLabel(b),
+  }))
+
+  return (
+    <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-1">
+        {tiles.map((t) => (
+          <div key={t.label} className="rounded-2xl border border-ink-800 bg-ink-900 p-4">
+            <p className="text-[13px] font-semibold text-ink-400">{t.label}</p>
+            <p className="mt-1 text-2xl font-black tracking-tight text-coral">{t.value}</p>
+            <p className="mt-0.5 text-[12px] text-ink-400">{t.detail}</p>
+          </div>
+        ))}
+      </div>
+      {cardio.count > 0 && (
+        <ChartCard
+          title={`Cardio por ${unit}`}
+          subtitle="Caminhada, corrida, bike, natação e cardio geral"
+          table={{
+            head: [weekly ? 'Semana' : 'Mês', 'Cardio', 'Treinos trocados'],
+            rows: stats.buckets.map((b) => [periodLabel(b), b.cardioMin ? formatDuration(b.cardioMin) : '—', b.replaced || '—']),
+          }}
+        >
+          <ColumnChart columns={columns} tone="coral" labelEvery={Math.ceil(stats.buckets.length / 8)} format={(n) => formatDuration(Math.round(n))} />
+        </ChartCard>
+      )}
     </div>
   )
 }

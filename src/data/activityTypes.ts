@@ -12,3 +12,6 @@ export const ACTIVITY_META: Record<ActivityType, { label: string; short: string;
   mobility: { label: 'Mobilidade / Alongamento', short: 'Mobilidade', icon: PersonStanding, distance: false },
   other: { label: 'Outro', short: 'Outro', icon: Sparkles, distance: false },
 }
+
+/** Tipos que contam como cardio nas estatísticas (esporte, mobilidade e outros ficam de fora). */
+export const CARDIO_TYPES: ReadonlySet<ActivityType> = new Set(['cardio', 'walk', 'run', 'cycling', 'swim'])
