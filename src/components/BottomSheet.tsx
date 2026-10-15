@@ -1,5 +1,6 @@
 import { X } from 'lucide-react'
-import { useEffect, useId, type ReactNode } from 'react'
+import { useEffect, useId, useRef, type ReactNode } from 'react'
+import { lockScroll } from '../scrollLock'
 
 type Props = {
   open: boolean
@@ -14,6 +15,15 @@ type Props = {
 /** Bottom sheet no celular, modal centralizado a partir de `sm`. */
 export function BottomSheet({ open, title, onClose, children, footer, level = 0 }: Props) {
   const titleId = useId()
+  // onClose costuma vir como função inline (nova a cada render): guardar em ref evita que os
+  // efeitos abaixo sejam desfeitos/refeitos a cada renderização.
+  const onCloseRef = useRef(onClose)
+  useEffect(() => {
+    onCloseRef.current = onClose
+  })
+
+  // Trava a rolagem da página uma vez por abertura (contador compartilhado entre sheets).
+  useEffect(() => (open ? lockScroll() : undefined), [open])
 
   useEffect(() => {
     if (!open) return
@@ -21,16 +31,11 @@ export function BottomSheet({ open, title, onClose, children, footer, level = 0 
       if (e.key !== 'Escape') return
       // Com sheets empilhados, só o do topo fecha
       if (level === 0 && document.querySelector('[data-sheet-level="1"]')) return
-      onClose()
+      onCloseRef.current()
     }
     window.addEventListener('keydown', onKey)
-    const prevOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      window.removeEventListener('keydown', onKey)
-      document.body.style.overflow = prevOverflow
-    }
-  }, [open, onClose, level])
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, level])
 
   if (!open) return null
 
