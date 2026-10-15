@@ -1,8 +1,20 @@
-import { ChevronRight, FileJson, MonitorSmartphone, Moon, Sun } from 'lucide-react'
+import {
+  BellRing,
+  ChevronRight,
+  FileJson,
+  MonitorSmartphone,
+  Moon,
+  Sun,
+  Vibrate,
+  VibrateOff,
+  Volume2,
+  VolumeX,
+} from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { ImportSheet } from '../components/ImportSheet'
 import { SyncPanel } from '../components/SyncPanel'
 import type { ImportedPlan } from '../domain/importWorkouts'
+import { canVibrate, restFinishedAlert, unlockAudio, useFeedbackPrefs } from '../feedback'
 import type { CloudSync } from '../hooks/useCloudSync'
 import type { ThemePref } from '../theme'
 import type { GymState } from '../types'
@@ -31,8 +43,48 @@ type Props = {
   onImport: (plan: ImportedPlan, mode: 'replace' | 'add', useDays: boolean) => void
 }
 
+function ToggleRow({
+  icon: Icon,
+  label,
+  hint,
+  checked,
+  disabled,
+  onChange,
+}: {
+  icon: typeof Sun
+  label: string
+  hint: string
+  checked: boolean
+  disabled?: boolean
+  onChange: (checked: boolean) => void
+}) {
+  const on = checked && !disabled
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      className="flex min-h-16 w-full items-center gap-3 rounded-2xl bg-ink-850 p-3 text-left transition hover:bg-ink-800 active:scale-[0.99] disabled:opacity-50"
+    >
+      <span className={`grid size-11 shrink-0 place-items-center rounded-xl ${on ? 'bg-lime/15 text-accent' : 'bg-ink-800 text-ink-400'}`}>
+        <Icon size={20} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block font-semibold">{label}</span>
+        <span className="block text-[13px] text-ink-400">{hint}</span>
+      </span>
+      <span className={`relative h-7 w-12 shrink-0 rounded-full transition ${on ? 'bg-lime' : 'bg-ink-700'}`}>
+        <span className={`absolute top-1 size-5 rounded-full bg-white shadow transition-all ${on ? 'left-6' : 'left-1'}`} />
+      </span>
+    </button>
+  )
+}
+
 export function SettingsView({ state, sync, theme, onThemeChange, onImport }: Props) {
   const [importOpen, setImportOpen] = useState(false)
+  const [feedback, setFeedback] = useFeedbackPrefs()
   return (
     <div className="space-y-5">
       <header>
@@ -60,6 +112,37 @@ export function SettingsView({ state, sync, theme, onThemeChange, onImport }: Pr
               </button>
             )
           })}
+        </div>
+      </Section>
+
+      <Section title="Som e vibração" description="Alertas do cronômetro de descanso e avisos de série incompleta. Vale só para este aparelho.">
+        <div className="space-y-2">
+          <ToggleRow
+            icon={feedback.sound ? Volume2 : VolumeX}
+            label="Som"
+            hint="Bipe quando o descanso termina"
+            checked={feedback.sound}
+            onChange={(sound) => setFeedback({ sound })}
+          />
+          <ToggleRow
+            icon={feedback.vibration ? Vibrate : VibrateOff}
+            label="Vibração"
+            hint={canVibrate() ? 'Vibra no fim do descanso e em série incompleta' : 'Este aparelho/navegador não permite vibrar (ex.: iPhone)'}
+            checked={feedback.vibration}
+            disabled={!canVibrate()}
+            onChange={(vibration) => setFeedback({ vibration })}
+          />
+          <button
+            type="button"
+            disabled={!feedback.sound && !(feedback.vibration && canVibrate())}
+            onClick={() => {
+              unlockAudio()
+              restFinishedAlert()
+            }}
+            className="mt-1 inline-flex h-11 items-center gap-2 rounded-xl bg-ink-850 px-4 text-sm font-semibold text-ink-100 transition hover:bg-ink-800 active:scale-95 disabled:opacity-40"
+          >
+            <BellRing size={17} /> Testar alerta
+          </button>
         </div>
       </Section>
 

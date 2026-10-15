@@ -150,6 +150,7 @@ export function WorkoutEditor({ workout, suggestedName = '', onSave, onDelete, o
                     <button type="button" onClick={() => setEditingExercise(exercise)} className="min-w-0 flex-1 py-1 text-left">
                       <p className="truncate text-[15px] font-semibold">{exercise.name}</p>
                       <p className="truncate text-[13px] text-ink-400">
+                        {exercise.kind === 'time' && '⏱ '}
                         {exercise.sets} × {exercise.reps}
                         {exercise.load && ` • ${exercise.load}`}
                       </p>

@@ -1,5 +1,9 @@
 /** Regras de validação e consultas de séries (Feature 2). */
-import type { DayLog, Exercise, ExerciseLog, SetLog, Workout, WorkoutSession } from '../types'
+import type { DayLog, Exercise, ExerciseKind, ExerciseLog, SetLog, Workout, WorkoutSession } from '../types'
+import { formatClock } from './rest'
+
+export const kindOf = (x: { kind?: ExerciseKind } | undefined): ExerciseKind => x?.kind ?? 'weight'
+export const MAX_SET_TIME_SEC = 3600
 
 export const emptySet = (): SetLog => ({ load: '', reps: '', rir: '', done: false })
 
@@ -13,11 +17,18 @@ export function parseDecimal(value: string): number | null {
 
 const isInt = (n: number | null): n is number => n !== null && Number.isInteger(n)
 
-export type SetField = 'load' | 'reps' | 'rir'
+export type SetField = 'load' | 'reps' | 'rir' | 'time'
 export type SetErrors = Partial<Record<SetField, string>>
 
-export function validateSet(set: SetLog): SetErrors {
+export function validateSet(set: SetLog, kind: ExerciseKind = 'weight'): SetErrors {
   const errors: SetErrors = {}
+  if (kind === 'time') {
+    const sec = parseDecimal(set.time ?? '')
+    if (sec === null || sec <= 0) errors.time = 'Informe o tempo'
+    else if (!isInt(sec) || sec > MAX_SET_TIME_SEC) errors.time = 'Tempo inválido'
+    return errors
+  }
+
   const load = parseDecimal(set.load)
   const reps = parseDecimal(set.reps)
   const rir = parseDecimal(set.rir)
@@ -34,7 +45,10 @@ export function validateSet(set: SetLog): SetErrors {
   return errors
 }
 
-export const isSetValid = (set: SetLog) => Object.keys(validateSet(set)).length === 0
+export const isSetValid = (set: SetLog, kind: ExerciseKind = 'weight') => Object.keys(validateSet(set, kind)).length === 0
+
+/** Série com algo digitado (decide confirmações de descartar/trocar). */
+export const setHasData = (s: SetLog) => !!(s.done || s.load || s.reps || s.rir || s.time)
 
 /** Séries a exibir para um exercício: as registradas ou as prescritas, vazias. */
 export function setsFor(session: WorkoutSession | undefined, exercise: Exercise): SetLog[] {
@@ -55,16 +69,18 @@ export function sessionProgress(session: WorkoutSession | undefined, workout: Wo
 export function sessionStats(session: WorkoutSession) {
   let sets = 0
   let volume = 0
+  let timeSec = 0
   for (const log of Object.values(session.logs)) {
     for (const s of log.sets) {
       if (!s.done) continue
       sets++
-      volume += (parseDecimal(s.load) ?? 0) * (parseDecimal(s.reps) ?? 0)
+      if (kindOf(log) === 'time') timeSec += parseDecimal(s.time ?? '') ?? 0
+      else volume += (parseDecimal(s.load) ?? 0) * (parseDecimal(s.reps) ?? 0)
     }
   }
   // Registro retroativo: o tempo entre abrir e concluir é o tempo digitando, não o do treino.
   const minutes = session.finishedAt && !session.retroactive ? Math.max(1, Math.round((session.finishedAt - session.startedAt) / 60_000)) : null
-  return { sets, volume: Math.round(volume), minutes }
+  return { sets, volume: Math.round(volume), timeSec, minutes }
 }
 
 /** Remove séries não confirmadas e exercícios sem séries (usado ao concluir o treino). */
@@ -77,7 +93,10 @@ export function pruneUnconfirmed(logs: Record<string, ExerciseLog>): Record<stri
   return out
 }
 
-export const formatSet = (s: SetLog) => `${s.load.replace('.', ',')}kg × ${s.reps}${s.rir !== '' ? ` @${s.rir}` : ''}`
+export const formatSet = (s: SetLog, kind: ExerciseKind = 'weight') =>
+  kind === 'time'
+    ? formatClock(parseDecimal(s.time ?? '') ?? 0)
+    : `${s.load.replace('.', ',')}kg × ${s.reps}${s.rir !== '' ? ` @${s.rir}` : ''}`
 
 const normalizeName = (name: string) =>
   name

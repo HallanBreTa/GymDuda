@@ -8,7 +8,9 @@
  *   "treinos": [
  *     { "nome": "Treino A - Peito", "foco": "Peito • Tríceps", "cor": "verde",   // foco e cor opcionais
  *       "exercicios": [
- *         { "nome": "Supino reto", "series": 4, "repeticoes": "8-10", "carga": "40kg", "obs": "..." }  // carga e obs opcionais
+ *         { "nome": "Supino reto", "series": 4, "repeticoes": "8-10", "carga": "40kg", "descanso": "1:30", "obs": "..." }
+ *         // carga, descanso e obs opcionais; descanso aceita "1:30", "90s", "2min" ou 90 (segundos)
+ *         // "tipo": "tempo" (prancha, isometria) registra só a duração; "repeticoes" vira a meta ("45s")
  *       ] }
  *   ]
  * }
@@ -16,6 +18,7 @@
  */
 import { WORKOUT_COLORS, type Exercise, type GymState, type Workout, type WorkoutColor } from '../types'
 import { uid } from '../utils'
+import { formatClock, looksLikeDuration, parseRest } from './rest'
 
 export type ImportedPlan = { workouts: Workout[]; trainingDays: boolean[] | null }
 export type ImportResult = { ok: true; plan: ImportedPlan } | { ok: false; errors: string[] }
@@ -56,10 +59,10 @@ export const IMPORT_EXAMPLE = {
       foco: 'Peito • Costas • Ombros',
       cor: 'verde',
       exercicios: [
-        { nome: 'Supino reto com barra', series: 4, repeticoes: '6-8', carga: '60kg', obs: 'Descer controlado' },
-        { nome: 'Remada curvada com barra', series: 4, repeticoes: '8-10', carga: '50kg' },
-        { nome: 'Desenvolvimento com halteres', series: 3, repeticoes: '8-10' },
-        { nome: 'Rosca direta', series: 3, repeticoes: '10-12' },
+        { nome: 'Supino reto com barra', series: 4, repeticoes: '6-8', carga: '60kg', descanso: '2:00', obs: 'Descer controlado' },
+        { nome: 'Remada curvada com barra', series: 4, repeticoes: '8-10', carga: '50kg', descanso: '1:30' },
+        { nome: 'Desenvolvimento com halteres', series: 3, repeticoes: '8-10', descanso: '1:30' },
+        { nome: 'Rosca direta', series: 3, repeticoes: '10-12', descanso: '1:00' },
       ],
     },
     {
@@ -67,10 +70,11 @@ export const IMPORT_EXAMPLE = {
       foco: 'Quadríceps • Posterior • Panturrilha',
       cor: 'laranja',
       exercicios: [
-        { nome: 'Agachamento livre', series: 4, repeticoes: '6-8', obs: 'Aquecer com 2 séries leves' },
-        { nome: 'Stiff com barra', series: 3, repeticoes: '8-10' },
-        { nome: 'Cadeira extensora', series: 3, repeticoes: '12-15' },
-        { nome: 'Panturrilha em pé', series: 4, repeticoes: '15-20' },
+        { nome: 'Agachamento livre', series: 4, repeticoes: '6-8', descanso: '3:00', obs: 'Aquecer com 2 séries leves' },
+        { nome: 'Leg press 45°', series: 4, repeticoes: '10-12', descanso: '1:30' },
+        { nome: 'Elevação pélvica', series: 3, repeticoes: '8-10', descanso: '2:00' },
+        { nome: 'Panturrilha em pé', series: 4, repeticoes: '15-20', descanso: '0:45' },
+        { nome: 'Prancha abdominal', tipo: 'tempo', series: 3, repeticoes: '45s', descanso: '1:00' },
       ],
     },
   ],
@@ -87,7 +91,9 @@ Regras do formato:
 - "formato" deve ser sempre "${FORMAT}".
 - "treinos": lista na ordem em que devem ser feitos (A, B, C…). Cada treino tem "nome" e "exercicios"; "foco" e "cor" são opcionais.
 - "cor" pode ser: verde, azul, laranja, rosa, roxo ou turquesa.
-- Cada exercício tem "nome", "series" (número), "repeticoes" (texto, ex.: "8-12" ou "45s") e, opcionalmente, "carga" (ex.: "40kg") e "obs".
+- Cada exercício tem "nome", "series" (número), "repeticoes" (texto, ex.: "8-12" ou "45s") e, opcionalmente, "carga" (ex.: "40kg"), "descanso" e "obs".
+- "tipo" (opcional): use "tempo" para exercícios medidos por duração (prancha, isometria); nesse caso "repeticoes" é a meta de tempo (ex.: "45s", "1:00"). Omita para exercícios de carga.
+- "descanso": tempo de descanso entre as séries daquele exercício, no formato "m:ss" (ex.: "1:30", "2:00"). Use descansos maiores nos compostos pesados e menores nos isoladores.
 - "diasDeTreino" (opcional): dias da semana em que vou treinar, usando seg, ter, qua, qui, sex, sab, dom.
 
 O que eu quero: `
@@ -144,6 +150,15 @@ export function parseImport(text: string): ImportResult {
       const sets = Math.round(Number(e.series))
       if (!exName) errors.push(`${at}: falta o "nome".`)
       if (!Number.isFinite(sets) || sets < 1 || sets > 20) errors.push(`${at}${exName ? ` (${exName})` : ''}: "series" deve ser um número de 1 a 20.`)
+      const tipo = normalize(str(e.tipo))
+      if (tipo && tipo !== 'tempo' && tipo !== 'peso' && tipo !== 'carga')
+        errors.push(`${at}${exName ? ` (${exName})` : ''}: "tipo" deve ser "tempo" ou "peso".`)
+      // Sem "tipo": se a meta é claramente um tempo ("45s", "1:00"), é exercício de tempo.
+      const isTime = tipo === 'tempo' || (!tipo && looksLikeDuration(str(e.repeticoes)))
+      const hasRest = e.descanso !== undefined && e.descanso !== null && e.descanso !== ''
+      const restSec = hasRest ? parseRest(e.descanso) : null
+      if (hasRest && restSec === null)
+        errors.push(`${at}${exName ? ` (${exName})` : ''}: "descanso" inválido ("${str(e.descanso)}"). Use "1:30", "90s" ou "2min".`)
       exercises.push({
         id: uid(),
         name: exName,
@@ -151,6 +166,8 @@ export function parseImport(text: string): ImportResult {
         reps: str(e.repeticoes),
         load: str(e.carga),
         notes: str(e.obs),
+        ...(restSec !== null && { restSec }),
+        ...(isTime && { kind: 'time' as const }),
       })
     })
 
@@ -195,9 +212,11 @@ export function currentPlanJson(state: GymState) {
       cor: COLOR_NAMES[w.color],
       exercicios: w.exercises.map((e) => ({
         nome: e.name,
+        ...(e.kind === 'time' ? { tipo: 'tempo' } : {}),
         series: e.sets,
         repeticoes: e.reps,
         ...(e.load ? { carga: e.load } : {}),
+        ...(e.restSec !== undefined ? { descanso: formatClock(e.restSec) } : {}),
         ...(e.notes ? { obs: e.notes } : {}),
       })),
     })),

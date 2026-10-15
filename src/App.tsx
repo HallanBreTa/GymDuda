@@ -1,9 +1,11 @@
 import { useCallback, useState } from 'react'
 import { ActivityForm } from './components/ActivityForm'
 import { BottomNav, Logo, TopBar } from './components/Navigation'
+import { RestTimerBar } from './components/RestTimerBar'
 import { Toast, type ToastMessage } from './components/Toast'
 import { WorkoutEditor } from './components/WorkoutEditor'
 import { useGymStore } from './hooks/useGymStore'
+import { useRestTimer } from './hooks/useRestTimer'
 import { useToday } from './hooks/useToday'
 import { useTheme } from './theme'
 import type { Activity, Tab, Workout } from './types'
@@ -29,6 +31,7 @@ export default function App() {
   const store = useGymStore({ onSyncReplaced: () => setToast({ id: Date.now(), text: 'Dados atualizados com a versão da nuvem' }) })
   const { state } = store
   const today = useToday()
+  const rest = useRestTimer()
   const [theme, setTheme] = useTheme()
 
   const [tab, setTab] = useState<Tab>('today')
@@ -82,6 +85,7 @@ export default function App() {
             onAddActivity={openNewActivity}
             onEditActivity={openEditActivity}
             highlightActivityId={highlightActivityId}
+            rest={rest}
           />
         )}
         {tab === 'workouts' && (
@@ -149,6 +153,7 @@ export default function App() {
         />
       )}
 
+      <RestTimerBar rest={rest} />
       <Toast toast={toast} onDone={clearToast} />
     </>
   )

@@ -16,6 +16,7 @@ import { addDays, formatShortDate, relativeDayLabel, uid } from '../utils'
 import { BottomSheet } from './BottomSheet'
 import { ConfirmDialog } from './ConfirmDialog'
 import { Button, Field, TextArea } from './ui'
+import { vibrate } from '../feedback'
 
 type Props = {
   state: GymState
@@ -65,7 +66,7 @@ export function ActivityForm({ state, today, editing, defaultDate, onSave, onDel
   const save = () => {
     setSubmitted(true)
     if (Object.keys(errors).length) {
-      navigator.vibrate?.(40)
+      vibrate(40)
       return
     }
     const activity = activityFromDraft({ ...draft, mode }, editing?.activity ?? { id: uid(), createdAt: Date.now() })

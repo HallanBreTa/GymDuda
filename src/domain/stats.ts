@@ -2,7 +2,7 @@
 import type { ActivityType, GymState, SetLog, WorkoutSession } from '../types'
 import { addDays, diffDays, parseISODate, startOfWeek, weekdayOf } from '../utils'
 import { projectDays } from './queue'
-import { parseDecimal, sessionStats } from './sets'
+import { kindOf, parseDecimal, sessionStats } from './sets'
 
 export type WeekdayStat = {
   /** Treinos concluídos nesse dia da semana (inclui extras). */
@@ -145,6 +145,7 @@ export function computeStats(state: GymState, from: string, today: string): Stat
     byWorkout.set(session.workoutName, (byWorkout.get(session.workoutName) ?? 0) + 1)
 
     for (const log of Object.values(session.logs)) {
+      if (kindOf(log) === 'time') continue // progressão é em kg; séries de tempo contam só no total de séries
       let best: ProgressPoint | null = null
       for (const set of log.sets) {
         if (!set.done) continue

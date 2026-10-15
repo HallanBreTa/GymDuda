@@ -1,10 +1,17 @@
+/** 'weight' = Kg · Reps · RIR (padrão); 'time' = só a duração da série (prancha, isometria…). */
+export type ExerciseKind = 'weight' | 'time'
+
 export type Exercise = {
   id: string
   name: string
+  /** Ausente = 'weight' (dados antigos continuam iguais). */
+  kind?: ExerciseKind
   sets: number // nº de séries prescritas
-  reps: string // meta, texto livre: "10", "8-12"
+  reps: string // meta, texto livre: "10", "8-12" — em exercícios de tempo, a meta de tempo ("45s", "1:00")
   load: string // carga sugerida, texto livre: "40kg", "peso corporal"
   notes: string
+  /** Descanso entre séries, em segundos. Ausente = padrão (90s); 0 = sem cronômetro. */
+  restSec?: number
 }
 
 export const WORKOUT_COLORS = ['lime', 'sky', 'orange', 'pink', 'violet', 'teal'] as const
@@ -25,11 +32,15 @@ export type SetLog = {
   load: string // kg
   reps: string
   rir: string // repetições na reserva (0 = falha)
+  /** Exercícios de tempo: duração da série em segundos ("45"). */
+  time?: string
   done: boolean
 }
 
 export type ExerciseLog = {
   name: string // snapshot do nome (permite achar carga anterior mesmo se o id mudar)
+  /** Snapshot do tipo: histórico/estatísticas sabem que é tempo mesmo se o exercício mudar. */
+  kind?: ExerciseKind
   sets: SetLog[]
 }
 

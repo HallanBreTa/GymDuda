@@ -1,11 +1,12 @@
-import type { Exercise, GymState, Workout, WorkoutColor } from '../types'
+import type { Exercise, ExerciseKind, GymState, Workout, WorkoutColor } from '../types'
 import { todayISO, uid } from '../utils'
 
-type ExSeed = [name: string, sets: number, reps: string, load?: string, notes?: string]
+type ExSeed = [name: string, sets: number, reps: string, load?: string, notes?: string, kind?: ExerciseKind]
 
-const ex = ([name, sets, reps, load = '', notes = '']: ExSeed): Exercise => ({
+const ex = ([name, sets, reps, load = '', notes = '', kind]: ExSeed): Exercise => ({
   id: uid(),
   name,
+  ...(kind === 'time' && { kind }),
   sets,
   reps,
   load,
@@ -54,7 +55,7 @@ const HAMS: ExSeed[] = [
   ['Elevação pélvica', 3, '10-12'],
 ]
 const CALVES: ExSeed[] = [['Panturrilha em pé', 4, '15-20']]
-const ABS: ExSeed[] = [['Prancha abdominal', 3, '45s', 'peso corporal']]
+const ABS: ExSeed[] = [['Prancha abdominal', 3, '45s', '', '', 'time']]
 
 type Plan = Pick<GymState, 'workouts' | 'queue' | 'trainingDays'>
 

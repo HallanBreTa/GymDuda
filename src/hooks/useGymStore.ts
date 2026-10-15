@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { createInitialState, TEMPLATES } from '../data/templates'
 import { canReplaceOn } from '../domain/activities'
 import { isTrainingDay, normalizePointer, pointerAfterCompletion, queueAt } from '../domain/queue'
-import { emptySet, isSetValid, pruneUnconfirmed } from '../domain/sets'
+import { emptySet, isSetValid, kindOf, pruneUnconfirmed } from '../domain/sets'
 import type { Activity, ActivityMode, DayLog, Exercise, GymState, SetLog, Workout, WorkoutSession } from '../types'
 import { addDays, todayISO, weekdayOf } from '../utils'
 import { useCloudSync } from './useCloudSync'
@@ -160,7 +160,8 @@ function editSession(s: GymState, date: string, workoutId: string, fn: (session:
 
 function editSets(session: WorkoutSession, exercise: Exercise, fn: (sets: SetLog[]) => SetLog[]): WorkoutSession {
   const current = session.logs[exercise.id]?.sets ?? Array.from({ length: Math.max(1, exercise.sets) }, emptySet)
-  return { ...session, logs: { ...session.logs, [exercise.id]: { name: exercise.name, sets: fn(current) } } }
+  const log = { name: exercise.name, ...(kindOf(exercise) === 'time' && { kind: 'time' as const }), sets: fn(current) }
+  return { ...session, logs: { ...session.logs, [exercise.id]: log } }
 }
 
 /* ---------- Hook ---------- */
@@ -261,7 +262,7 @@ export function useGymStore({ onSyncReplaced }: { onSyncReplaced?: () => void } 
         setState((s) =>
           editSession(s, date, workoutId, (session) =>
             editSets(session, exercise, (sets) =>
-              sets.map((set, i) => (i !== index || (done && !isSetValid(set)) ? set : { ...set, done })),
+              sets.map((set, i) => (i !== index || (done && !isSetValid(set, kindOf(exercise))) ? set : { ...set, done })),
             ),
           ),
         )
@@ -288,6 +289,7 @@ export function useGymStore({ onSyncReplaced }: { onSyncReplaced?: () => void } 
               sets.map((set, i) => {
                 if (set.done) return set
                 const p = previous[Math.min(i, previous.length - 1)]
+                if (kindOf(exercise) === 'time') return { ...set, time: set.time || p.time }
                 return { ...set, load: set.load || p.load, reps: set.reps || p.reps, rir: set.rir || p.rir }
               }),
             ),

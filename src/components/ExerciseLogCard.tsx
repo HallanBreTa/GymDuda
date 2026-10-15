@@ -1,9 +1,11 @@
-import { AlertCircle, Check, ChevronDown, History, Minus, Plus } from 'lucide-react'
+import { AlertCircle, Check, ChevronDown, Dumbbell, History, Hourglass, Minus, Plus, Timer } from 'lucide-react'
 import { useState } from 'react'
-import { formatSet, isSetValid, type PreviousPerformance, type SetField } from '../domain/sets'
+import { formatClock, parseRest, restOf } from '../domain/rest'
+import { formatSet, isSetValid, kindOf, parseDecimal, type PreviousPerformance, type SetField } from '../domain/sets'
 import type { Exercise, SetLog } from '../types'
 import { formatShortDate } from '../utils'
 import { SetRow } from './SetRow'
+import { vibrate } from '../feedback'
 
 type EditProps = {
   mode: 'edit'
@@ -30,10 +32,14 @@ export function ExerciseLogCard(props: Props) {
   // Séries em que o usuário tentou confirmar sem preencher → mostram erro.
   const [attempts, setAttempts] = useState<Record<number, number>>({})
 
+  const kind = kindOf(exercise)
+  const isTime = kind === 'time'
   const isEdit = props.mode === 'edit'
   const showBody = !isEdit || expanded || !complete
-  const hasInvalidAttempt = isEdit && sets.some((s, i) => attempts[i] && !s.done && !isSetValid(s))
-  const canFill = isEdit && previous && sets.some((s) => !s.done && (!s.load || !s.reps || !s.rir))
+  const hasInvalidAttempt = isEdit && sets.some((s, i) => attempts[i] && !s.done && !isSetValid(s, kind))
+  const canFill =
+    isEdit && previous && sets.some((s) => !s.done && (isTime ? !s.time : !s.load || !s.reps || !s.rir))
+  const targetSec = isTime ? parseRest(exercise.reps) : null
 
   const header = (
     <div className="flex items-start gap-3">
@@ -45,6 +51,7 @@ export function ExerciseLogCard(props: Props) {
         {complete ? <Check size={15} strokeWidth={3.5} /> : index + 1}
       </span>
       <div className="min-w-0 flex-1">
+        <KindTag kind={kind} />
         <p className="leading-snug font-semibold">{exercise.name}</p>
         <p className="mt-0.5 text-[13px] text-ink-400">
           {!isEdit && sets.length > 0 ? (
@@ -53,6 +60,12 @@ export function ExerciseLogCard(props: Props) {
             <>
               Meta {exercise.sets} × {exercise.reps}
               {exercise.load && ` • ${exercise.load}`}
+              {restOf(exercise) > 0 && (
+                <span className="whitespace-nowrap">
+                  {' • '}
+                  <Timer size={12} className="-mt-0.5 inline" /> {formatClock(restOf(exercise))}
+                </span>
+              )}
             </>
           )}
           {isEdit && <span className={complete ? 'text-accent' : ''}> • {doneCount}/{sets.length} séries</span>}
@@ -85,7 +98,7 @@ export function ExerciseLogCard(props: Props) {
             <div className="flex items-center gap-2 rounded-xl bg-ink-850 px-3 py-2">
               <History size={15} className="shrink-0 text-sky-400" />
               <p className="min-w-0 flex-1 truncate text-[13px] text-ink-300">
-                <span className="text-ink-400">{formatShortDate(previous.date)}:</span> {previous.sets.map(formatSet).join(' · ')}
+                <span className="text-ink-400">{formatShortDate(previous.date)}:</span> {previous.sets.map((s) => formatSet(s, kind)).join(' · ')}
               </p>
               {canFill && (
                 <button
@@ -101,28 +114,39 @@ export function ExerciseLogCard(props: Props) {
 
           {props.mode === 'edit' ? (
             <>
-              <div className="grid grid-cols-[1.75rem_1fr_1fr_1fr_3rem] gap-1.5 text-center text-[11px] font-semibold tracking-wide text-ink-400 uppercase">
-                <span>#</span>
-                <span>Kg</span>
-                <span>Reps</span>
-                <span>RIR</span>
-                <span />
-              </div>
+              {isTime ? (
+                <div className="grid grid-cols-[1.75rem_1fr_3rem_3rem] gap-1.5 text-center text-[11px] font-semibold tracking-wide text-ink-400 uppercase">
+                  <span>#</span>
+                  <span>Tempo</span>
+                  <span />
+                  <span />
+                </div>
+              ) : (
+                <div className="grid grid-cols-[1.75rem_1fr_1fr_1fr_3rem] gap-1.5 text-center text-[11px] font-semibold tracking-wide text-ink-400 uppercase">
+                  <span>#</span>
+                  <span>Kg</span>
+                  <span>Reps</span>
+                  <span>RIR</span>
+                  <span />
+                </div>
+              )}
               <div className="space-y-2">
                 {sets.map((set, i) => (
                   <SetRow
                     key={i}
                     index={i}
                     set={set}
+                    kind={kind}
+                    targetSec={targetSec}
                     previous={previous?.sets[Math.min(i, previous.sets.length - 1)]}
                     showErrors={(attempts[i] ?? 0) > 0}
                     shakeKey={attempts[i] ?? 0}
                     onChange={(field, value) => props.onUpdate(i, field, value)}
                     onToggle={() => {
                       if (set.done) return props.onToggle(i, false)
-                      if (!isSetValid(set)) {
+                      if (!isSetValid(set, kind)) {
                         setAttempts((a) => ({ ...a, [i]: (a[i] ?? 0) + 1 }))
-                        navigator.vibrate?.(40)
+                        vibrate(40)
                         return
                       }
                       props.onToggle(i, true)
@@ -135,7 +159,8 @@ export function ExerciseLogCard(props: Props) {
 
               {hasInvalidAttempt && (
                 <p role="alert" className="flex items-center gap-1.5 text-[13px] font-medium text-red-400">
-                  <AlertCircle size={15} /> Preencha carga, reps e RIR para confirmar a série.
+                  <AlertCircle size={15} />{' '}
+                  {isTime ? 'Informe o tempo da série (digite ou use o ▶).' : 'Preencha carga, reps e RIR para confirmar a série.'}
                 </p>
               )}
 
@@ -157,13 +182,22 @@ export function ExerciseLogCard(props: Props) {
                     <Minus size={16} /> Série
                   </button>
                 )}
-                <span className="ml-auto self-center text-[11px] text-ink-600">RIR 0 = até a falha</span>
+                <span className="ml-auto self-center text-[11px] text-ink-600">
+                  {isTime ? 'Digite 45 → 0:45 · 130 → 1:30' : 'RIR 0 = até a falha'}
+                </span>
               </div>
             </>
           ) : (
             sets.length > 0 && (
               <ul className="space-y-1">
-                {sets.map((s, i) => (
+                {sets.map((s, i) =>
+                  isTime ? (
+                    <li key={i} className="flex items-center gap-3 text-sm">
+                      <span className="w-5 text-center font-bold text-accent tabular-nums">{i + 1}</span>
+                      <Hourglass size={14} className="text-sky-400" />
+                      <span className="font-semibold tabular-nums">{formatClock(parseDecimal(s.time ?? '') ?? 0)}</span>
+                    </li>
+                  ) : (
                   <li key={i} className="flex items-center gap-3 text-sm">
                     <span className="w-5 text-center font-bold text-accent tabular-nums">{i + 1}</span>
                     <span className="tabular-nums">{s.load.replace('.', ',')} kg</span>
@@ -171,12 +205,26 @@ export function ExerciseLogCard(props: Props) {
                     <span className="tabular-nums">{s.reps} reps</span>
                     <span className="ml-auto rounded-md bg-ink-800 px-2 py-0.5 text-xs font-semibold text-ink-300">RIR {s.rir}</span>
                   </li>
-                ))}
+                  ),
+                )}
               </ul>
             )
           )}
         </div>
       )}
     </article>
+  )
+}
+
+/** TAG do tipo do exercício, acima do nome. */
+export function KindTag({ kind }: { kind: 'weight' | 'time' }) {
+  return kind === 'time' ? (
+    <span className="mb-1 inline-flex items-center gap-1 rounded-md bg-sky-400/12 px-1.5 py-0.5 text-[10px] font-black tracking-wider text-sky-400 uppercase">
+      <Hourglass size={11} strokeWidth={2.5} /> Tempo
+    </span>
+  ) : (
+    <span className="mb-1 inline-flex items-center gap-1 rounded-md bg-ink-800 px-1.5 py-0.5 text-[10px] font-black tracking-wider text-ink-400 uppercase">
+      <Dumbbell size={11} strokeWidth={2.5} /> Peso
+    </span>
   )
 }

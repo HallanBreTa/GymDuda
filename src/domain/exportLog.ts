@@ -3,7 +3,7 @@ import { ACTIVITY_META } from '../data/activityTypes'
 import type { Activity, GymState, SetLog, WorkoutSession } from '../types'
 import { addDays, diffDays, parseISODate, WEEKDAYS_SHORT, weekdayOf } from '../utils'
 import { activityDetails } from './activities'
-import { formatSet, sessionStats } from './sets'
+import { formatSet, kindOf, sessionStats } from './sets'
 import { estimated1RM } from './stats'
 
 export type ExportOptions = {
@@ -58,7 +58,7 @@ function sessionBlock(state: GymState, date: string, session: WorkoutSession) {
   })
   for (const [, log] of entries) {
     const sets = log.sets.filter((s) => s.done)
-    if (sets.length) lines.push(`- ${log.name}: ${sets.map(formatSet).join(' | ')}`)
+    if (sets.length) lines.push(`- ${log.name}: ${sets.map((s) => formatSet(s, kindOf(log))).join(' | ')}`)
   }
   return lines
 }
@@ -76,7 +76,7 @@ export function buildTrainingLog(state: GymState, { from, today, withPrompt }: E
     '',
     `Período: ${fmtDate(firstDate)} a ${fmtDate(today)} (${diffDays(firstDate, today) + 1} dias)`,
     '',
-    'Formato das séries: carga (kg) × repetições @RIR (repetições na reserva; 0 = até a falha). Só séries concluídas.',
+    'Formato das séries: carga (kg) × repetições @RIR (repetições na reserva; 0 = até a falha); exercícios de tempo: duração m:ss. Só séries concluídas.',
     '',
   )
 
@@ -95,7 +95,8 @@ export function buildTrainingLog(state: GymState, { from, today, withPrompt }: E
     if (!w.exercises.length) out.push('- (sem exercícios)')
     for (const e of w.exercises) {
       const extras = [e.load.trim() && `carga sugerida ${e.load.trim()}`, e.notes.trim() && `obs: ${e.notes.trim()}`].filter(Boolean)
-      out.push(`- ${e.name}: ${e.sets} × ${e.reps || '?'}${extras.length ? ` (${extras.join('; ')})` : ''}`)
+      const tag = kindOf(e) === 'time' ? ' (tempo)' : ''
+      out.push(`- ${e.name}: ${e.sets} × ${e.reps || '?'}${tag}${extras.length ? ` (${extras.join('; ')})` : ''}`)
     }
     out.push('')
   }
@@ -124,6 +125,7 @@ export function buildTrainingLog(state: GymState, { from, today, withPrompt }: E
   const byExercise = new Map<string, { name: string; points: Point[] }>()
   for (const [date, session] of done) {
     for (const log of Object.values(session.logs)) {
+      if (kindOf(log) === 'time') continue // tabela em kg/1RM
       const best = bestSet(log.sets.filter((s) => s.done))
       if (!best) continue
       const key = log.name.trim().toLowerCase()

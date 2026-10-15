@@ -29,8 +29,10 @@ import {
   projectDays,
   staleSession,
 } from '../domain/queue'
-import { doneSessionsDesc, findPrevious, sessionProgress, sessionStats, setsFor, type SetField } from '../domain/sets'
+import { doneSessionsDesc, findPrevious, sessionProgress, sessionStats, setHasData, setsFor, type SetField } from '../domain/sets'
+import { restOf } from '../domain/rest'
 import type { GymStore } from '../hooks/useGymStore'
+import type { RestTimerControls } from '../hooks/useRestTimer'
 import { ACTIVITY_META } from '../data/activityTypes'
 import { formatDuration } from '../domain/activities'
 import type { Activity, Exercise, Workout, WorkoutColor, WorkoutSession } from '../types'
@@ -46,6 +48,8 @@ type Props = {
   onEditActivity: (date: string, activity: Activity) => void
   /** Id da atividade recém-salva (anima o card). */
   highlightActivityId?: string
+  /** Cronômetro de descanso (vive no App para sobreviver à troca de aba). */
+  rest: RestTimerControls
 }
 
 type Dialog = { kind: 'complete' } | { kind: 'discard'; date: string } | { kind: 'rest' } | { kind: 'swap'; workoutId: string } | null
@@ -53,7 +57,7 @@ type NextInfo = { date: string; workoutId: string } | null
 
 /** A sessão tem algo digitado/confirmado? (decide se trocar/descansar pede confirmação) */
 const hasData = (session?: WorkoutSession) =>
-  !!session && Object.values(session.logs).some((l) => l.sets.some((s) => s.done || s.load || s.reps || s.rir))
+  !!session && Object.values(session.logs).some((l) => l.sets.some(setHasData))
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
@@ -66,6 +70,7 @@ export function TodayView({
   onAddActivity,
   onEditActivity,
   highlightActivityId,
+  rest,
 }: Props) {
   const { state } = store
   const [pickerOpen, setPickerOpen] = useState(false)
@@ -129,12 +134,38 @@ export function TodayView({
   const finish = () => {
     if (!progress || progress.done === 0) return
     if (progress.done < progress.total) setDialog({ kind: 'complete' })
-    else store.completeSession(date)
+    else completeWorkout()
+  }
+
+  const completeWorkout = () => {
+    store.completeSession(date)
+    rest.skip()
+  }
+
+  /**
+   * Série confirmada → cronômetro com o descanso DAQUELE exercício.
+   * Só no treino de hoje (registro retroativo não tem descanso real) e não depois da
+   * última série do treino. Desfazer a série cancela o cronômetro que ela iniciou.
+   */
+  const toggleSet = (exercise: Exercise, w: Workout, i: number, done: boolean) => {
+    store.setSetDone(date, w.id, exercise, i, done)
+    const timerId = `${date}:${exercise.id}:${i}`
+    if (!done) return rest.cancel(timerId)
+    const restSec = restOf(exercise)
+    const isLastOfWorkout = !!progress && progress.done + 1 >= progress.total
+    if (isLastOfWorkout) return rest.skip() // acabou o treino: nada de descanso pendente na tela
+    if (!isToday || session?.retroactive || restSec <= 0) return
+    rest.start({
+      id: timerId,
+      exerciseName: exercise.name,
+      setLabel: `Série ${i + 1} de ${setsFor(session, exercise).length}`,
+      totalSec: restSec,
+    })
   }
 
   const exerciseHandlers = (exercise: Exercise, w: Workout) => ({
     onUpdate: (i: number, field: SetField, value: string) => store.updateSet(date, w.id, exercise, i, { [field]: value }),
-    onToggle: (i: number, done: boolean) => store.setSetDone(date, w.id, exercise, i, done),
+    onToggle: (i: number, done: boolean) => toggleSet(exercise, w, i, done),
     onAddSet: () => store.addSet(date, w.id, exercise),
     onRemoveSet: (i: number) => store.removeSet(date, w.id, exercise, i),
     onFillPrevious: () => {
@@ -454,7 +485,7 @@ export function TodayView({
         confirmLabel="Concluir"
         danger={false}
         onClose={() => setDialog(null)}
-        onConfirm={() => store.completeSession(date)}
+        onConfirm={completeWorkout}
       />
       <ConfirmDialog
         open={dialog?.kind === 'discard'}
@@ -528,7 +559,7 @@ function DoneSection({
           <ExerciseLogCard
             key={id}
             index={i}
-            exercise={{ id, name: log.name, sets: log.sets.length, reps: '', load: '', notes: '' }}
+            exercise={{ id, name: log.name, kind: log.kind, sets: log.sets.length, reps: '', load: '', notes: '' }}
             sets={log.sets}
             previous={null}
             mode="readonly"
