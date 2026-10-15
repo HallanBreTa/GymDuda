@@ -1,10 +1,10 @@
-import { ArrowDown, ArrowRightLeft, ArrowUp, Check, ChevronRight, Info, Minus, Moon, Plus, X } from 'lucide-react'
+import { ArrowDown, ArrowRightLeft, ArrowUp, Check, ChevronRight, History, Info, Minus, Moon, Plus, X } from 'lucide-react'
 import { useMemo, type ReactNode } from 'react'
 import { ActivityBadge } from '../components/ActivityCard'
 import { WorkoutBadge } from '../components/ui'
 import { ACTIVITY_META } from '../data/activityTypes'
 import { formatDuration, totalMinutes } from '../domain/activities'
-import { projectDays, type DayPlan } from '../domain/queue'
+import { lastCompleted, pointerFromHistory, projectDays, type DayPlan } from '../domain/queue'
 import type { GymStore } from '../hooks/useGymStore'
 import type { Activity, Workout } from '../types'
 import { addDays, formatShortDate, startOfWeek, WEEKDAYS, WEEKDAYS_SHORT } from '../utils'
@@ -43,6 +43,11 @@ export function WeekView({ store, today, onOpenDay, onAddActivity }: Props) {
     ['done', 'in_progress', 'pending', 'planned', 'missed', 'replaced'].includes(plans[d].kind),
   ).length
   const activityMinutes = totalMinutes(state, dates)
+
+  const lastDone = lastCompleted(state)
+  const expectedPointer = pointerFromHistory(state)
+  const expectedNext = workoutsById.get(state.queue[expectedPointer])
+  const queueInSync = expectedPointer === state.pointer
 
   return (
     <div className="space-y-7">
@@ -153,6 +158,30 @@ export function WeekView({ store, today, onOpenDay, onAddActivity }: Props) {
               )
             })}
           </ol>
+        )}
+
+        {/* Fila x histórico: se o próximo não é o que vem depois do último treino feito, oferece corrigir */}
+        {lastDone && queueWorkouts.length > 0 && (
+          <div
+            className={`mt-3 flex items-center gap-3 rounded-2xl p-3 text-[13px] leading-snug ${
+              queueInSync ? 'bg-ink-900 text-ink-400' : 'border border-amber-400/40 bg-amber-400/8 text-ink-100'
+            }`}
+          >
+            {queueInSync ? <Check size={16} className="shrink-0 text-accent" /> : <History size={18} className="shrink-0 text-amber-300" />}
+            <p className="min-w-0 flex-1">
+              Último feito: <strong>{lastDone.session.workoutName}</strong> ({formatShortDate(lastDone.date)}).{' '}
+              {queueInSync ? 'A fila está de acordo com o histórico.' : <>Pelo histórico, o próximo seria o <strong>{expectedNext?.name}</strong>.</>}
+            </p>
+            {!queueInSync && (
+              <button
+                type="button"
+                onClick={store.recalcQueueFromHistory}
+                className="h-10 shrink-0 rounded-xl bg-amber-400 px-3 text-[13px] font-bold text-on-accent transition active:scale-95"
+              >
+                Corrigir
+              </button>
+            )}
+          </div>
         )}
 
         {loose.length > 0 && (

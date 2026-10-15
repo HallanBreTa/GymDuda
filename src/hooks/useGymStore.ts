@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createInitialState, TEMPLATES } from '../data/templates'
 import { canReplaceOn } from '../domain/activities'
-import { isTrainingDay, normalizePointer, pointerAfterCompletion, queueAt } from '../domain/queue'
+import { isTrainingDay, normalizePointer, pointerAfterCompletion, pointerFromHistory, queueAt } from '../domain/queue'
 import {
   doneSessionsDesc,
   emptySet,
@@ -220,6 +220,22 @@ function withLatestLoads(s: GymState, date: string, logs: WorkoutSession['logs']
   return { ...s, workouts }
 }
 
+/**
+ * Troca o plano inteiro (template ou JSON "substituir"). Os treinos ganham ids novos, então a
+ * fila é recalculada pelo histórico: se o último concluído foi o "Treino A", o próximo é o B
+ * do plano novo (antes voltava sempre para o A). O início da fila não pula os dias já registrados.
+ */
+function withNewPlan(s: GymState, plan: Pick<GymState, 'workouts' | 'queue' | 'trainingDays'>): GymState {
+  const history = Object.fromEntries(Object.entries(s.history).filter(([, log]) => log.status !== 'in_progress'))
+  const lastDone = Object.keys(history)
+    .filter((d) => history[d].status === 'done')
+    .sort()
+    .pop()
+  const today = todayISO()
+  const next: GymState = { ...s, ...plan, history, pointer: 0, startDate: lastDone && lastDone < today ? lastDone : today }
+  return { ...next, pointer: pointerFromHistory(next) }
+}
+
 /* ---------- Hook ---------- */
 
 export function useGymStore({ onSyncReplaced }: { onSyncReplaced?: () => void } = {}) {
@@ -356,7 +372,7 @@ export function useGymStore({ onSyncReplaced }: { onSyncReplaced?: () => void } 
           if (session?.status !== 'in_progress') return s
           const logs = pruneUnconfirmed(session.logs)
           if (!Object.keys(logs).length) return s
-          const pointer = pointerAfterCompletion(s, session.workoutId)
+          const pointer = pointerAfterCompletion(s, session)
           const done: WorkoutSession = {
             ...session,
             status: 'done',
@@ -439,11 +455,8 @@ export function useGymStore({ onSyncReplaced }: { onSyncReplaced?: () => void } 
       applyTemplate(key: string) {
         const template = TEMPLATES.find((t) => t.key === key)
         if (!template) return
-        setState((s) => {
-          const history = Object.fromEntries(Object.entries(s.history).filter(([, log]) => log.status !== 'in_progress'))
-          // Histórico concluído é mantido (a carga anterior é encontrada pelo nome do exercício).
-          return { ...s, ...template.create(), pointer: 0, history, startDate: todayISO() }
-        })
+        // Histórico concluído é mantido (a carga anterior é encontrada pelo nome do exercício).
+        setState((s) => withNewPlan(s, template.create()))
       },
 
       /**
@@ -457,17 +470,13 @@ export function useGymStore({ onSyncReplaced }: { onSyncReplaced?: () => void } 
             const next = { ...s, workouts: [...s.workouts, ...workouts], trainingDays: days }
             return withQueue(next, [...s.queue, ...workouts.map((w) => w.id)])
           }
-          const history = Object.fromEntries(Object.entries(s.history).filter(([, log]) => log.status !== 'in_progress'))
-          return {
-            ...s,
-            workouts,
-            queue: workouts.map((w) => w.id),
-            pointer: 0,
-            trainingDays: days,
-            history,
-            startDate: todayISO(),
-          }
+          return withNewPlan(s, { workouts, queue: workouts.map((w) => w.id), trainingDays: days })
         })
+      },
+
+      /** Conserta a fila: o próximo passa a ser o treino depois do último concluído no histórico. */
+      recalcQueueFromHistory() {
+        setState((s) => ({ ...s, pointer: pointerFromHistory(s) }))
       },
 
       resetAll() {

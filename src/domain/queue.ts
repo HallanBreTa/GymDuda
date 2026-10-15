@@ -20,7 +20,8 @@
  *     aparece como "substituído" e não como falta.
  */
 import type { Activity, GymState, WorkoutSession } from '../types'
-import { addDays, diffDays, todayISO, weekdayOf } from '../utils'
+import { addDays, diffDays, todayISO, weekdayOf, workoutBadge } from '../utils'
+import { normalizeName } from './sets'
 
 export type DayPlan =
   | { kind: 'done'; session: WorkoutSession }
@@ -151,10 +152,54 @@ export function staleSession(state: GymState, today = todayISO()): { date: strin
   return found
 }
 
+type WorkoutRef = Pick<WorkoutSession, 'workoutId' | 'workoutName'>
+
+/**
+ * Posição na fila do treino de uma sessão. Procura pelo id e, se ele não existir mais
+ * (o plano foi reimportado/trocado e os treinos ganharam ids novos), pelo nome e depois
+ * pela letra ("Treino A - …"), desde que a letra seja única na fila. -1 se não achar.
+ */
+export function matchQueueIndex(state: Pick<GymState, 'queue' | 'workouts'>, ref: WorkoutRef): number {
+  const byId = state.queue.indexOf(ref.workoutId)
+  if (byId >= 0) return byId
+
+  const queued = state.queue.map((id) => state.workouts.find((w) => w.id === id)?.name ?? '')
+  const name = normalizeName(ref.workoutName)
+  const byName = queued.findIndex((n) => normalizeName(n) === name)
+  if (byName >= 0) return byName
+
+  const letter = workoutBadge(ref.workoutName)
+  const sameLetter = queued.flatMap((n, i) => (n && workoutBadge(n) === letter ? [i] : []))
+  return sameLetter.length === 1 ? sameLetter[0] : -1
+}
+
 /** Ponteiro após concluir uma sessão: só anda se o treino feito era o próximo da fila. */
-export function pointerAfterCompletion(state: GymState, workoutId: string): number {
-  if (nextWorkoutId(state) !== workoutId) return state.pointer // treino avulso/trocado: a fila fica intacta
+export function pointerAfterCompletion(state: GymState, session: WorkoutRef): number {
+  if (matchQueueIndex(state, session) !== normalizePointer(state.pointer, state.queue.length)) return state.pointer // treino avulso/trocado: a fila fica intacta
   return normalizePointer(state.pointer + 1, state.queue.length)
+}
+
+/**
+ * Próximo da fila segundo o histórico: o treino depois do último concluído.
+ * Usado ao importar/trocar o plano (que antes voltava sempre para o A) e no botão
+ * "Recalcular pelo histórico". Sem histórico ou sem correspondência: começa do primeiro.
+ */
+export function pointerFromHistory(state: GymState): number {
+  const sessions = Object.entries(state.history)
+    .filter((e): e is [string, WorkoutSession] => e[1].status === 'done')
+    .sort(([a, sa], [b, sb]) => (a === b ? (sa.finishedAt ?? 0) - (sb.finishedAt ?? 0) : a < b ? -1 : 1))
+  // Do mais recente para trás. Prefere treinos que ANDARAM a fila ao serem concluídos
+  // (pointerBefore definido): um treino trocado de propósito (estava no B, fez o D) não move a fila.
+  const pick = (onlyAdvanced: boolean) => {
+    for (let i = sessions.length - 1; i >= 0; i--) {
+      const s = sessions[i][1]
+      if (onlyAdvanced && s.pointerBefore === undefined) continue
+      const idx = matchQueueIndex(state, s)
+      if (idx >= 0) return normalizePointer(idx + 1, state.queue.length)
+    }
+    return null
+  }
+  return pick(true) ?? pick(false) ?? 0
 }
 
 /** Próximo dia (a partir de `from`, inclusive) com treino previsto/pendente na projeção. */
