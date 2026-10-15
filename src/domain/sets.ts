@@ -51,8 +51,37 @@ export const isSetValid = (set: SetLog, kind: ExerciseKind = 'weight') => Object
 export const setHasData = (s: SetLog) => !!(s.done || s.load || s.reps || s.rir || s.time)
 
 /** Séries a exibir para um exercício: as registradas ou as prescritas, vazias. */
-export function setsFor(session: WorkoutSession | undefined, exercise: Exercise): SetLog[] {
-  return session?.logs[exercise.id]?.sets ?? Array.from({ length: Math.max(1, exercise.sets) }, emptySet)
+export function setsFor(session: WorkoutSession | undefined, exercise: Exercise, previous: PreviousPerformance | null = null): SetLog[] {
+  return session?.logs[exercise.id]?.sets ?? initialSets(exercise, previous)
+}
+
+/** "40kg", "42,5 kg", "40" → "40"/"42,5". "2x20kg", "peso corporal" → null (não dá para pré-preencher). */
+export function parseSuggestedLoad(text: string): string | null {
+  const m = text.trim().match(/^(\d+(?:[.,]\d+)?)\s*(?:kg)?$/i)
+  return m ? m[1] : null
+}
+
+/**
+ * Séries de um exercício ainda não tocado no treino. Em exercícios de peso, o Kg já vem
+ * preenchido com a carga da mesma série na última sessão (ou a carga sugerida, se não houver
+ * histórico) — o usuário só ajusta reps/RIR. Reps/RIR ficam vazios: precisam ser registrados.
+ */
+export function initialSets(exercise: Exercise, previous: PreviousPerformance | null): SetLog[] {
+  const fallback = kindOf(exercise) === 'weight' ? parseSuggestedLoad(exercise.load) : null
+  return Array.from({ length: Math.max(1, exercise.sets) }, (_, i) => {
+    if (kindOf(exercise) !== 'weight') return emptySet()
+    const p = previous?.sets[Math.min(i, previous.sets.length - 1)]
+    const load = p?.load || fallback
+    return load ? { ...emptySet(), load } : emptySet()
+  })
+}
+
+/** Carga para a "carga sugerida": a da última série confirmada. 0 = peso corporal. */
+export function suggestedLoadFrom(sets: SetLog[]): string | null {
+  const last = [...sets].reverse().find((s) => s.done && parseDecimal(s.load) !== null)
+  if (!last) return null
+  const kg = parseDecimal(last.load)!
+  return kg === 0 ? 'peso corporal' : `${String(kg).replace('.', ',')}kg`
 }
 
 export function sessionProgress(session: WorkoutSession | undefined, workout: Workout) {
@@ -98,7 +127,7 @@ export const formatSet = (s: SetLog, kind: ExerciseKind = 'weight') =>
     ? formatClock(parseDecimal(s.time ?? '') ?? 0)
     : `${s.load.replace('.', ',')}kg × ${s.reps}${s.rir !== '' ? ` @${s.rir}` : ''}`
 
-const normalizeName = (name: string) =>
+export const normalizeName = (name: string) =>
   name
     .toLowerCase()
     .normalize('NFD')

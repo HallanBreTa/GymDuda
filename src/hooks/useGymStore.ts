@@ -2,7 +2,17 @@ import { useEffect, useMemo, useState } from 'react'
 import { createInitialState, TEMPLATES } from '../data/templates'
 import { canReplaceOn } from '../domain/activities'
 import { isTrainingDay, normalizePointer, pointerAfterCompletion, queueAt } from '../domain/queue'
-import { emptySet, isSetValid, kindOf, pruneUnconfirmed } from '../domain/sets'
+import {
+  doneSessionsDesc,
+  emptySet,
+  findPrevious,
+  initialSets,
+  isSetValid,
+  kindOf,
+  normalizeName,
+  pruneUnconfirmed,
+  suggestedLoadFrom,
+} from '../domain/sets'
 import type { Activity, ActivityMode, DayLog, Exercise, GymState, SetLog, Workout, WorkoutSession } from '../types'
 import { addDays, todayISO, weekdayOf } from '../utils'
 import { useCloudSync } from './useCloudSync'
@@ -158,10 +168,56 @@ function editSession(s: GymState, date: string, workoutId: string, fn: (session:
   return workout ? withNewSession(s, date, fn(newSession(s, date, workout))) : s
 }
 
-function editSets(session: WorkoutSession, exercise: Exercise, fn: (sets: SetLog[]) => SetLog[]): WorkoutSession {
-  const current = session.logs[exercise.id]?.sets ?? Array.from({ length: Math.max(1, exercise.sets) }, emptySet)
-  const log = { name: exercise.name, ...(kindOf(exercise) === 'time' && { kind: 'time' as const }), sets: fn(current) }
-  return { ...session, logs: { ...session.logs, [exercise.id]: log } }
+/**
+ * Aplica `fn` nas séries de um exercício da sessão da data (criando sessão/séries se preciso).
+ * Séries novas nascem como a tela as mostra: Kg já preenchido com a última sessão (initialSets).
+ */
+function editExerciseSets(
+  s: GymState,
+  date: string,
+  workoutId: string,
+  exercise: Exercise,
+  fn: (sets: SetLog[]) => SetLog[],
+): GymState {
+  return editSession(s, date, workoutId, (session) => {
+    const current =
+      session.logs[exercise.id]?.sets ?? initialSets(exercise, findPrevious(doneSessionsDesc(s.history), exercise, date))
+    const log = { name: exercise.name, ...(kindOf(exercise) === 'time' && { kind: 'time' as const }), sets: fn(current) }
+    return { ...session, logs: { ...session.logs, [exercise.id]: log } }
+  })
+}
+
+/**
+ * Atualiza a "carga sugerida" dos exercícios de peso com a última carga usada na sessão
+ * (exercícios com o mesmo id ou o mesmo nome, em qualquer treino). Não sobrescreve com
+ * dados mais antigos: se já existe um treino concluído depois desta data com o exercício, pula.
+ */
+function withLatestLoads(s: GymState, date: string, logs: WorkoutSession['logs']): GymState {
+  const later = doneSessionsDesc(s.history).filter(([d]) => d > date)
+  const updates = new Map<string, string>() // nome normalizado → carga
+  const byId = new Map<string, string>()
+  for (const [id, log] of Object.entries(logs)) {
+    if (kindOf(log) !== 'weight') continue
+    const load = suggestedLoadFrom(log.sets)
+    const name = normalizeName(log.name)
+    const newer = later.some(([, sess]) => sess.logs[id] || Object.values(sess.logs).some((l) => normalizeName(l.name) === name))
+    if (!load || newer) continue
+    updates.set(name, load)
+    byId.set(id, load)
+  }
+  if (!updates.size) return s
+  const workouts = s.workouts.map((w) => {
+    let changed = false
+    const exercises = w.exercises.map((e) => {
+      if (kindOf(e) !== 'weight') return e
+      const load = byId.get(e.id) ?? updates.get(normalizeName(e.name))
+      if (!load || load === e.load) return e
+      changed = true
+      return { ...e, load }
+    })
+    return changed ? { ...w, exercises } : w
+  })
+  return { ...s, workouts }
 }
 
 /* ---------- Hook ---------- */
@@ -251,8 +307,8 @@ export function useGymStore({ onSyncReplaced }: { onSyncReplaced?: () => void } 
 
       updateSet(date: string, workoutId: string, exercise: Exercise, index: number, patch: Partial<Omit<SetLog, 'done'>>) {
         setState((s) =>
-          editSession(s, date, workoutId, (session) =>
-            editSets(session, exercise, (sets) => sets.map((set, i) => (i === index && !set.done ? { ...set, ...patch } : set))),
+          editExerciseSets(s, date, workoutId, exercise, (sets) =>
+            sets.map((set, i) => (i === index && !set.done ? { ...set, ...patch } : set)),
           ),
         )
       },
@@ -260,22 +316,20 @@ export function useGymStore({ onSyncReplaced }: { onSyncReplaced?: () => void } 
       /** Confirma/desfaz uma série. A confirmação exige carga, reps e RIR válidos. */
       setSetDone(date: string, workoutId: string, exercise: Exercise, index: number, done: boolean) {
         setState((s) =>
-          editSession(s, date, workoutId, (session) =>
-            editSets(session, exercise, (sets) =>
+          editExerciseSets(s, date, workoutId, exercise, (sets) =>
               sets.map((set, i) => (i !== index || (done && !isSetValid(set, kindOf(exercise))) ? set : { ...set, done })),
-            ),
           ),
         )
       },
 
       addSet(date: string, workoutId: string, exercise: Exercise) {
-        setState((s) => editSession(s, date, workoutId, (session) => editSets(session, exercise, (sets) => [...sets, emptySet()])))
+        setState((s) => editExerciseSets(s, date, workoutId, exercise, (sets) => [...sets, emptySet()]))
       },
 
       removeSet(date: string, workoutId: string, exercise: Exercise, index: number) {
         setState((s) =>
-          editSession(s, date, workoutId, (session) =>
-            editSets(session, exercise, (sets) => (sets.length > 1 && !sets[index]?.done ? sets.filter((_, i) => i !== index) : sets)),
+          editExerciseSets(s, date, workoutId, exercise, (sets) =>
+            sets.length > 1 && !sets[index]?.done ? sets.filter((_, i) => i !== index) : sets,
           ),
         )
       },
@@ -284,15 +338,13 @@ export function useGymStore({ onSyncReplaced }: { onSyncReplaced?: () => void } 
       fillFromPrevious(date: string, workoutId: string, exercise: Exercise, previous: SetLog[]) {
         if (!previous.length) return
         setState((s) =>
-          editSession(s, date, workoutId, (session) =>
-            editSets(session, exercise, (sets) =>
+          editExerciseSets(s, date, workoutId, exercise, (sets) =>
               sets.map((set, i) => {
                 if (set.done) return set
                 const p = previous[Math.min(i, previous.length - 1)]
                 if (kindOf(exercise) === 'time') return { ...set, time: set.time || p.time }
                 return { ...set, load: set.load || p.load, reps: set.reps || p.reps, rir: set.rir || p.rir }
               }),
-            ),
           ),
         )
       },
@@ -315,7 +367,8 @@ export function useGymStore({ onSyncReplaced }: { onSyncReplaced?: () => void } 
           // Registrou um treino antes do início da fila (ex.: importou o plano hoje, mas começou
           // na terça): a fila passa a valer a partir desse dia.
           const startDate = date < s.startDate ? date : s.startDate
-          return { ...withHistory(s, date, done), pointer, startDate }
+          // A carga sugerida de cada exercício passa a ser a última usada.
+          return withLatestLoads({ ...withHistory(s, date, done), pointer, startDate }, date, logs)
         })
       },
 

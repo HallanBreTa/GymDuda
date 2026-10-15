@@ -305,17 +305,21 @@ export function TodayView({
             />
           ) : (
             <div className="space-y-3">
-              {workout.exercises.map((exercise, i) => (
-                <ExerciseLogCard
-                  key={exercise.id}
-                  index={i}
-                  exercise={exercise}
-                  sets={setsFor(session, exercise)}
-                  previous={findPrevious(sessionsDesc, exercise, date)}
-                  mode="edit"
-                  {...exerciseHandlers(exercise, workout)}
-                />
-              ))}
+              {workout.exercises.map((exercise, i) => {
+                const previous = findPrevious(sessionsDesc, exercise, date)
+                return (
+                  <ExerciseLogCard
+                    key={exercise.id}
+                    index={i}
+                    exercise={exercise}
+                    // Kg já vem com a última carga usada (o store cria as séries do mesmo jeito)
+                    sets={setsFor(session, exercise, previous)}
+                    previous={previous}
+                    mode="edit"
+                    {...exerciseHandlers(exercise, workout)}
+                  />
+                )
+              })}
             </div>
           )}
 
