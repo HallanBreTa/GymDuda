@@ -3,6 +3,7 @@ import { ACTIVITY_META } from '../data/activityTypes'
 import type { Activity, GymState, SetLog, WorkoutSession } from '../types'
 import { addDays, diffDays, parseISODate, WEEKDAYS_SHORT, weekdayOf } from '../utils'
 import { activityDetails } from './activities'
+import { average, checkinLine } from './checkins'
 import { formatSet, kindOf, sessionStats } from './sets'
 import { estimated1RM } from './stats'
 
@@ -19,7 +20,8 @@ const AI_PROMPT = `Você é um treinador de musculação. Analise meu histórico
 2. Volume semanal por grupo muscular (séries efetivas) e se está adequado.
 3. Frequência e consistência (dias treinados x planejados).
 4. Intensidade a partir do RIR (repetições na reserva): estou treinando perto o suficiente da falha?
-5. Sugestões práticas e específicas para as próximas semanas (cargas, séries, exercícios, divisão).`
+5. Sugestões práticas e específicas para as próximas semanas (cargas, séries, exercícios, divisão).
+6. Leve em conta a disposição (1–5) e a dor na coluna (0–10) registradas nos check-ins ao sugerir exercícios e cargas.`
 
 const fmtDate = (iso: string) => {
   const d = parseISODate(iso)
@@ -65,7 +67,8 @@ function sessionBlock(state: GymState, date: string, session: WorkoutSession) {
 
 export function buildTrainingLog(state: GymState, { from, today, withPrompt }: ExportOptions): string {
   const inRange = (date: string) => date <= today && (!from || date >= from)
-  const dates = [...new Set([...Object.keys(state.history), ...Object.keys(state.activities)])].filter(inRange).sort()
+  const checkins = state.checkins ?? {}
+  const dates = [...new Set([...Object.keys(state.history), ...Object.keys(state.activities), ...Object.keys(checkins)])].filter(inRange).sort()
   const firstDate = from ?? dates[0] ?? today
   const out: string[] = []
 
@@ -110,6 +113,10 @@ export function buildTrainingLog(state: GymState, { from, today, withPrompt }: E
   const activities = dates.flatMap((d) => state.activities[d] ?? [])
   const rests = dates.filter((d) => state.history[d]?.status === 'rest').length
   const weeks = Math.max(1, (diffDays(firstDate, today) + 1) / 7)
+  const dayCheckins = dates.flatMap((d) => (checkins[d] ? [checkins[d]] : []))
+  const moodAvg = average(dayCheckins.flatMap((c) => (c.mood !== null ? [c.mood] : [])))
+  const painList = dayCheckins.flatMap((c) => (c.backPain !== null ? [c.backPain] : []))
+  const painAvg = average(painList)
   out.push(
     '## Resumo do período',
     '',
@@ -117,6 +124,13 @@ export function buildTrainingLog(state: GymState, { from, today, withPrompt }: E
     `- Séries concluídas: ${done.reduce((n, [, s]) => n + sessionStats(s).sets, 0)}`,
     `- Atividades avulsas (cardio, esportes etc.): ${activities.length}, total de ${activities.reduce((n, a) => n + a.durationMin, 0)} min`,
     `- Descansos registrados: ${rests}`,
+    ...(dayCheckins.length
+      ? [
+          `- Check-ins diários: ${dayCheckins.length}` +
+            (moodAvg !== null ? ` — disposição média ${fmtNumber(moodAvg)}/5` : '') +
+            (painAvg !== null ? ` — dor na coluna média ${fmtNumber(painAvg)}/10 (máx. ${Math.max(...painList)})` : ''),
+        ]
+      : []),
     '',
   )
 
@@ -160,7 +174,8 @@ export function buildTrainingLog(state: GymState, { from, today, withPrompt }: E
     const log = state.history[date]
     const dayActivities = state.activities[date] ?? []
     if (log && log.status !== 'rest') out.push(...sessionBlock(state, date, log))
-    else out.push(`### ${fmtDate(date)} — ${log?.status === 'rest' ? 'Descanso' : 'Só atividades'}`)
+    else out.push(`### ${fmtDate(date)} — ${log?.status === 'rest' ? 'Descanso' : dayActivities.length ? 'Só atividades' : 'Sem treino'}`)
+    if (checkins[date]) out.push(checkinLine(checkins[date]))
     out.push(...dayActivities.map(activityLine), '')
   }
 

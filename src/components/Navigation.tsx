@@ -1,12 +1,13 @@
-import { CalendarDays, ChartColumn, Dumbbell, Flame, Settings } from 'lucide-react'
+import { CalendarDays, ChartColumn, Dumbbell, Flame, House, Settings } from 'lucide-react'
 import type { Tab } from '../types'
 
+// Ajustes não fica na barra: é a engrenagem no topo (SettingsButton).
 const TABS: { id: Tab; label: string; icon: typeof Flame }[] = [
+  { id: 'home', label: 'Início', icon: House },
   { id: 'today', label: 'Hoje', icon: Flame },
   { id: 'workouts', label: 'Treinos', icon: Dumbbell },
   { id: 'week', label: 'Semana', icon: CalendarDays },
   { id: 'stats', label: 'Dados', icon: ChartColumn },
-  { id: 'settings', label: 'Ajustes', icon: Settings },
 ]
 
 type Props = { tab: Tab; onChange: (tab: Tab) => void }
@@ -17,22 +18,25 @@ export function TopBar({ tab, onChange }: Props) {
     <header className="sticky top-0 z-40 hidden border-b border-ink-800/80 bg-ink-950/85 backdrop-blur-xl md:block">
       <div className="mx-auto flex h-16 max-w-3xl items-center justify-between px-6">
         <Logo />
-        <nav className="flex gap-1 rounded-2xl bg-ink-900 p-1" aria-label="Navegação principal">
-          {TABS.map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => onChange(id)}
-              aria-current={tab === id ? 'page' : undefined}
-              className={`inline-flex h-10 items-center gap-2 rounded-xl px-4 text-sm font-semibold transition ${
-                tab === id ? 'bg-ink-700 text-ink-100' : 'text-ink-400 hover:text-ink-100'
-              }`}
-            >
-              <Icon size={17} className={tab === id ? 'text-accent' : ''} />
-              {label}
-            </button>
-          ))}
-        </nav>
+        <div className="flex items-center gap-2">
+          <nav className="flex gap-1 rounded-2xl bg-ink-900 p-1" aria-label="Navegação principal">
+            {TABS.map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => onChange(id)}
+                aria-current={tab === id ? 'page' : undefined}
+                className={`inline-flex h-10 items-center gap-2 rounded-xl px-3.5 text-sm font-semibold transition ${
+                  tab === id ? 'bg-ink-700 text-ink-100' : 'text-ink-400 hover:text-ink-100'
+                }`}
+              >
+                <Icon size={17} className={tab === id ? 'text-accent' : ''} />
+                {label}
+              </button>
+            ))}
+          </nav>
+          <SettingsButton tab={tab} onChange={onChange} />
+        </div>
       </div>
     </header>
   )
@@ -65,6 +69,24 @@ export function BottomNav({ tab, onChange }: Props) {
         })}
       </div>
     </nav>
+  )
+}
+
+/** Engrenagem que abre os Ajustes (topo da tela). */
+export function SettingsButton({ tab, onChange }: Props) {
+  const active = tab === 'settings'
+  return (
+    <button
+      type="button"
+      onClick={() => onChange('settings')}
+      aria-label="Ajustes"
+      aria-current={active ? 'page' : undefined}
+      className={`grid size-11 shrink-0 place-items-center rounded-full transition active:scale-95 ${
+        active ? 'bg-lime/15 text-accent' : 'text-ink-400 hover:bg-ink-800 hover:text-ink-100'
+      }`}
+    >
+      <Settings size={21} strokeWidth={active ? 2.5 : 2} />
+    </button>
   )
 }
 

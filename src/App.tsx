@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 import { ActivityForm } from './components/ActivityForm'
-import { BottomNav, Logo, TopBar } from './components/Navigation'
+import { BottomNav, Logo, SettingsButton, TopBar } from './components/Navigation'
 import { RestTimerBar } from './components/RestTimerBar'
 import { Toast, type ToastMessage } from './components/Toast'
 import { WorkoutEditor } from './components/WorkoutEditor'
@@ -9,6 +9,7 @@ import { useRestTimer } from './hooks/useRestTimer'
 import { useToday } from './hooks/useToday'
 import { useTheme } from './theme'
 import type { Activity, Tab, Workout } from './types'
+import { HomeView } from './views/HomeView'
 import { SettingsView } from './views/SettingsView'
 import { StatsView } from './views/StatsView'
 import { TodayView } from './views/TodayView'
@@ -34,7 +35,7 @@ export default function App() {
   const rest = useRestTimer()
   const [theme, setTheme] = useTheme()
 
-  const [tab, setTab] = useState<Tab>('today')
+  const [tab, setTab] = useState<Tab>('home')
   const [editor, setEditor] = useState<EditorState>(null)
   const [activityForm, setActivityForm] = useState<ActivityFormState>(null)
   const [highlightActivityId, setHighlightActivityId] = useState<string>()
@@ -71,10 +72,27 @@ export default function App() {
       <TopBar tab={tab} onChange={changeTab} />
 
       <main className="mx-auto max-w-3xl px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[calc(6rem+env(safe-area-inset-bottom))] sm:px-6 md:pt-8 md:pb-12">
-        <div className="mb-5 md:hidden">
+        <div className="mb-5 flex items-center justify-between md:hidden">
           <Logo />
+          <div className="-mr-2">
+            <SettingsButton tab={tab} onChange={changeTab} />
+          </div>
         </div>
 
+        {tab === 'home' && (
+          <HomeView
+            store={store}
+            today={today}
+            onGoToday={() => {
+              selectDate(today)
+              changeTab('today')
+            }}
+            onOpenDay={(date) => {
+              selectDate(date)
+              changeTab('today')
+            }}
+          />
+        )}
         {tab === 'today' && (
           <TodayView
             store={store}

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createInitialState, TEMPLATES } from '../data/templates'
 import { canReplaceOn } from '../domain/activities'
+import { mergeCheckin, sanitizeCheckins, sanitizeWeekGoals } from '../domain/checkins'
 import { isTrainingDay, normalizePointer, pointerAfterCompletion, pointerFromHistory, queueAt } from '../domain/queue'
 import {
   doneSessionsDesc,
@@ -13,7 +14,7 @@ import {
   pruneUnconfirmed,
   suggestedLoadFrom,
 } from '../domain/sets'
-import type { Activity, ActivityMode, DayLog, Exercise, GymState, SetLog, Workout, WorkoutSession } from '../types'
+import type { Activity, ActivityMode, CheckIn, DayLog, Exercise, GymState, SetLog, Workout, WorkoutSession } from '../types'
 import { addDays, todayISO, weekdayOf } from '../utils'
 import { useCloudSync } from './useCloudSync'
 
@@ -82,7 +83,11 @@ const migrateV2 = (v2: StateV2): GymState => ({ ...v2, version: 3, activities: {
 function sanitize(state: GymState): GymState {
   const ids = new Set(state.workouts.map((w) => w.id))
   const queue = state.queue.filter((id) => ids.has(id))
-  return { ...state, queue, pointer: normalizePointer(state.pointer, queue.length) }
+  const extras = {
+    ...(state.checkins !== undefined && { checkins: sanitizeCheckins(state.checkins) }),
+    ...(state.weekGoals !== undefined && { weekGoals: sanitizeWeekGoals(state.weekGoals) }),
+  }
+  return { ...state, ...extras, queue, pointer: normalizePointer(state.pointer, queue.length) }
 }
 
 /** Valida e migra um estado salvo (localStorage ou nuvem). Retorna null se não reconhecer. */
@@ -447,6 +452,29 @@ export function useGymStore({ onSyncReplaced }: { onSyncReplaced?: () => void } 
           if (mode === 'replace' && !canReplaceOn(s, date, today, id)) return s
           const list = (s.activities[date] ?? []).map((a) => (a.id === id ? { ...a, mode } : a))
           return { ...s, activities: { ...s.activities, [date]: list } }
+        })
+      },
+
+      /* ----- Check-in e meta da semana ----- */
+
+      /** Mescla o check-in do dia. Se ficar vazio (sem disposição, dor ou nota), a entrada some. */
+      saveCheckin(date: string, patch: Partial<Omit<CheckIn, 'updatedAt'>>) {
+        setState((s) => {
+          const checkins = { ...s.checkins }
+          const next = mergeCheckin(checkins[date], patch)
+          if (next) checkins[date] = next
+          else delete checkins[date]
+          return { ...s, checkins }
+        })
+      },
+
+      /** Meta de dias na academia da semana (`weekStart` = segunda-feira). null volta ao padrão. */
+      setWeekGoal(weekStart: string, goal: number | null) {
+        setState((s) => {
+          const weekGoals = { ...s.weekGoals }
+          if (goal === null) delete weekGoals[weekStart]
+          else weekGoals[weekStart] = Math.min(7, Math.max(1, Math.round(goal)))
+          return { ...s, weekGoals }
         })
       },
 

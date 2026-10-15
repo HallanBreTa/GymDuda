@@ -105,6 +105,23 @@ export type GymState = {
   activities: Record<string, Activity[]>
   /** Data em que o usuário começou a usar a fila — antes disso não há "faltas". */
   startDate: string
+  /** Check-in diário (disposição e dor na coluna) por data ISO. Opcional: estados antigos não têm. */
+  checkins?: Record<string, CheckIn>
+  /** Meta de dias na academia por semana (chave = segunda-feira ISO). Ausente = nº de dias de treino. */
+  weekGoals?: Record<string, number>
 }
 
-export type Tab = 'today' | 'workouts' | 'week' | 'stats' | 'settings'
+/* ---------- Check-in diário ---------- */
+
+export type Mood = 1 | 2 | 3 | 4 | 5
+
+export type CheckIn = {
+  /** Disposição: 1 = péssimo … 5 = ótimo. */
+  mood: Mood | null
+  /** Dor na coluna: 0 = sem dor … 10 = máxima. */
+  backPain: number | null
+  note: string
+  updatedAt: number
+}
+
+export type Tab = 'home' | 'today' | 'workouts' | 'week' | 'stats' | 'settings'
