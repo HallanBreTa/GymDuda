@@ -43,6 +43,8 @@ export type WorkoutSession = {
   extra: boolean // feito em dia planejado como descanso
   startedAt: number
   finishedAt?: number
+  /** Registrado depois do dia (ex.: esqueceu de marcar o treino de ontem). A duração não é medida. */
+  retroactive?: boolean
   /** Ponteiro da fila antes da conclusão — permite "Reabrir treino" sem bagunçar a fila. */
   pointerBefore?: number
   logs: Record<string, ExerciseLog> // chave = exerciseId

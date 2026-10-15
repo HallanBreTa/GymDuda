@@ -62,7 +62,8 @@ export function sessionStats(session: WorkoutSession) {
       volume += (parseDecimal(s.load) ?? 0) * (parseDecimal(s.reps) ?? 0)
     }
   }
-  const minutes = session.finishedAt ? Math.max(1, Math.round((session.finishedAt - session.startedAt) / 60_000)) : null
+  // Registro retroativo: o tempo entre abrir e concluir é o tempo digitando, não o do treino.
+  const minutes = session.finishedAt && !session.retroactive ? Math.max(1, Math.round((session.finishedAt - session.startedAt) / 60_000)) : null
   return { sets, volume: Math.round(volume), minutes }
 }
 

@@ -1,4 +1,19 @@
-import { AlertTriangle, ArrowRightLeft, CalendarClock, Dumbbell, Flag, Moon, Pencil, Plus, Repeat, RotateCcw, Trash2, Trophy, Zap } from 'lucide-react'
+import {
+  AlertTriangle,
+  ArrowRightLeft,
+  CalendarClock,
+  Dumbbell,
+  Flag,
+  History,
+  Moon,
+  Pencil,
+  Plus,
+  Repeat,
+  RotateCcw,
+  Trash2,
+  Trophy,
+  Zap,
+} from 'lucide-react'
 import { useMemo, useState, type ReactNode } from 'react'
 import { ActivityCard } from '../components/ActivityCard'
 import { ConfirmDialog } from '../components/ConfirmDialog'
@@ -79,6 +94,21 @@ export function TodayView({
   const progress = editable && workout ? sessionProgress(session, workout) : null
 
   const nameOf = (id: string | null | undefined) => (id && workoutsById.get(id)?.name) || 'próximo treino'
+  const dayLabel = relativeDayLabel(date, today)
+  // "ontem" ou "07 out" — soa natural em "treino de …" / "feito …"
+  const pastDay = dayLabel === 'ontem' ? 'ontem' : formatShortDate(date)
+  const pastWhen = dayLabel === 'ontem' ? 'ontem' : `em ${pastDay}`
+
+  // Dia passado sem treino registrado: dá para registrar retroativamente (esqueceu de marcar).
+  const canLogPast =
+    date < today &&
+    state.workouts.length > 0 &&
+    (plan.kind === 'missed' || plan.kind === 'rest' || plan.kind === 'rest_logged' || plan.kind === 'before_start')
+  const logPastButton = canLogPast && (
+    <Button variant={plan.kind === 'missed' ? 'primary' : 'secondary'} className="mt-6" onClick={() => setPickerOpen(true)}>
+      <History size={18} /> Registrar treino feito {pastWhen}
+    </Button>
+  )
 
   /* ----- Ações ----- */
 
@@ -154,7 +184,9 @@ export function TodayView({
       {stale && (
         <Banner icon={<CalendarClock size={18} />}>
           <p>
-            O <strong>{stale.session.workoutName}</strong> de {relativeDayLabel(stale.date, today)} ficou em andamento.
+            {stale.session.retroactive ? 'O registro do ' : 'O '}
+            <strong>{stale.session.workoutName}</strong> de {relativeDayLabel(stale.date, today)}{' '}
+            {stale.session.retroactive ? 'não foi salvo.' : 'ficou em andamento.'}
           </p>
           <div className="mt-2 flex gap-2">
             <BannerButton onClick={() => onSelectDate(stale.date)}>Continuar</BannerButton>
@@ -176,6 +208,11 @@ export function TodayView({
               o <strong>{nameOf(nextId)}</strong> continua sendo o próximo.
             </>
           )}
+          <div className="mt-2">
+            <BannerButton onClick={() => onSelectDate(missed[missed.length - 1])}>
+              Treinei {relativeDayLabel(missed[missed.length - 1], today)}, registrar
+            </BannerButton>
+          </div>
         </Banner>
       )}
 
@@ -197,15 +234,22 @@ export function TodayView({
             color={workout.color}
             label={
               plan.kind === 'in_progress'
-                ? plan.stale
-                  ? `Iniciado ${relativeDayLabel(date, today)}`
+                ? session?.retroactive
+                  ? `Registro de ${pastDay}`
+                  : plan.stale
+                  ? `Iniciado ${dayLabel}`
                   : session?.extra
                     ? 'Treino extra'
                     : 'Em andamento'
                 : 'Próximo da fila'
             }
-            labelIcon={session?.extra ? <Zap size={12} /> : undefined}
+            labelIcon={session?.retroactive ? <History size={12} /> : session?.extra ? <Zap size={12} /> : undefined}
           >
+            {session?.retroactive && (
+              <p className="mb-4 text-[13px] text-ink-300">
+                Preencha o que você fez {pastWhen} e salve. Se era o próximo da fila, a fila anda normalmente.
+              </p>
+            )}
             <ProgressBar done={progress.done} total={progress.total} color={workout.color} />
             <div className="mt-4 flex flex-wrap gap-2">
               <Chip icon={<Repeat size={15} />} label="Trocar" onClick={() => setPickerOpen(true)} />
@@ -246,7 +290,9 @@ export function TodayView({
             <div className="mx-auto max-w-3xl px-4 py-3 sm:px-6">
               <Button className="w-full" disabled={progress.done === 0} onClick={finish}>
                 <Flag size={18} />
-                {progress.done === 0 ? 'Confirme ao menos 1 série' : `Concluir treino · ${progress.done}/${progress.total} séries`}
+                {progress.done === 0
+                  ? 'Confirme ao menos 1 série'
+                  : `${session?.retroactive ? `Salvar treino de ${pastDay}` : 'Concluir treino'} · ${progress.done}/${progress.total} séries`}
               </Button>
             </div>
           </div>
@@ -320,6 +366,7 @@ export function TodayView({
             </div>
           )}
           {isToday && !nextId && <p className="mt-4 text-sm text-ink-400">Sua fila está vazia. Crie treinos na aba Treinos.</p>}
+          {logPastButton}
         </StatusCard>
       )}
 
@@ -339,6 +386,7 @@ export function TodayView({
               <RotateCcw size={18} /> Desfazer
             </Button>
           )}
+          {logPastButton}
         </StatusCard>
       )}
 
@@ -364,12 +412,16 @@ export function TodayView({
           icon={<AlertTriangle size={28} />}
           iconClass="text-amber-400"
           title="Treino não registrado"
-          text={`Era dia de treino (${WEEKDAYS[weekdayOf(date)].toLowerCase()}) e nada foi registrado. Nenhum treino foi pulado: o que estava previsto passou para o dia de treino seguinte.`}
-        />
+          text={`Era dia de treino (${WEEKDAYS[weekdayOf(date)].toLowerCase()}) e nada foi registrado. Nenhum treino foi pulado: o que estava previsto passou para o dia de treino seguinte. Treinou e esqueceu de marcar? Registre abaixo.`}
+        >
+          {logPastButton}
+        </StatusCard>
       )}
 
       {plan.kind === 'before_start' && (
-        <StatusCard icon={<CalendarClock size={28} />} iconClass="text-ink-400" title="Sem histórico" text="Você ainda não usava a fila nesse dia." />
+        <StatusCard icon={<CalendarClock size={28} />} iconClass="text-ink-400" title="Sem histórico" text="Você ainda não usava a fila nesse dia.">
+          {logPastButton}
+        </StatusCard>
       )}
 
       {/* ----- Sheets e diálogos ----- */}
@@ -447,11 +499,9 @@ function DoneSection({
           <Stat value={stats.volume.toLocaleString('pt-BR')} label="kg de volume" />
           <Stat value={stats.minutes ?? '–'} label="minutos" />
         </div>
-        {isToday && (
-          <div className="mt-4 flex gap-2">
-            <Chip icon={<RotateCcw size={15} />} label="Reabrir" onClick={onReopen} />
-          </div>
-        )}
+        <div className="mt-4 flex gap-2">
+          <Chip icon={<RotateCcw size={15} />} label={isToday ? 'Reabrir' : 'Reabrir para corrigir'} onClick={onReopen} />
+        </div>
       </Hero>
 
       {isToday && (

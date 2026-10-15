@@ -129,8 +129,21 @@ function newSession(s: GymState, date: string, workout: Workout): WorkoutSession
     workoutColor: workout.color,
     extra: !isTrainingDay(s, date),
     startedAt: Date.now(),
+    ...(date < todayISO() && { retroactive: true }),
     logs: {},
   }
+}
+
+/**
+ * Grava uma sessão nova na data. Se uma atividade avulsa "substituía" o treino desse dia,
+ * ela vira extra: agora o dia tem treino de verdade.
+ */
+function withNewSession(s: GymState, date: string, session: WorkoutSession): GymState {
+  const list = s.activities[date]
+  const activities = list?.some((a) => a.mode === 'replace')
+    ? { ...s.activities, [date]: list.map((a) => (a.mode === 'replace' ? { ...a, mode: 'extra' as const } : a)) }
+    : s.activities
+  return withHistory({ ...s, activities }, date, session)
 }
 
 /**
@@ -140,15 +153,9 @@ function newSession(s: GymState, date: string, workout: Workout): WorkoutSession
 function editSession(s: GymState, date: string, workoutId: string, fn: (session: WorkoutSession) => WorkoutSession): GymState {
   const existing = s.history[date]
   if (existing?.status === 'done') return s
-  let session: WorkoutSession
-  if (existing?.status === 'in_progress' && existing.workoutId === workoutId) {
-    session = existing
-  } else {
-    const workout = s.workouts.find((w) => w.id === workoutId)
-    if (!workout) return s
-    session = newSession(s, date, workout)
-  }
-  return withHistory(s, date, fn(session))
+  if (existing?.status === 'in_progress' && existing.workoutId === workoutId) return withHistory(s, date, fn(existing))
+  const workout = s.workouts.find((w) => w.id === workoutId)
+  return workout ? withNewSession(s, date, fn(newSession(s, date, workout))) : s
 }
 
 function editSets(session: WorkoutSession, exercise: Exercise, fn: (sets: SetLog[]) => SetLog[]): WorkoutSession {
@@ -226,14 +233,18 @@ export function useGymStore({ onSyncReplaced }: { onSyncReplaced?: () => void } 
 
       /* ----- Sessão do dia ----- */
 
-      /** Inicia (ou troca) o treino de uma data. Trocar descarta o que foi registrado. */
+      /**
+       * Inicia (ou troca) o treino de uma data. Trocar descarta o que foi registrado.
+       * Funciona também para datas passadas (registro retroativo): substitui um descanso
+       * registrado ou uma falta, e ao concluir a fila anda normalmente se era o próximo.
+       */
       startSession(date: string, workoutId: string) {
         setState((s) => {
           const existing = s.history[date]
-          if (existing?.status === 'done') return s
+          if (existing?.status === 'done' || date > todayISO()) return s
           if (existing?.status === 'in_progress' && existing.workoutId === workoutId) return s
           const workout = s.workouts.find((w) => w.id === workoutId)
-          return workout ? withHistory(s, date, newSession(s, date, workout)) : s
+          return workout ? withNewSession(s, date, newSession(s, date, workout)) : s
         })
       },
 
