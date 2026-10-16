@@ -3,6 +3,7 @@ import { createInitialState, TEMPLATES } from '../data/templates'
 import { canReplaceOn } from '../domain/activities'
 import { mergeCheckin, sanitizeCheckins } from '../domain/checkins'
 import { isTrainingDay, normalizePointer, pointerAfterCompletion, pointerFromHistory, queueAt } from '../domain/queue'
+import { sanitizeFreezePurchases, withFreezePurchase } from '../domain/streak'
 import {
   doneSessionsDesc,
   emptySet,
@@ -15,7 +16,7 @@ import {
   suggestedLoadFrom,
 } from '../domain/sets'
 import type { Activity, ActivityMode, CheckIn, DayLog, Exercise, GymState, SetLog, Workout, WorkoutSession } from '../types'
-import { addDays, todayISO, weekdayOf } from '../utils'
+import { addDays, todayISO, uid, weekdayOf } from '../utils'
 import { useCloudSync } from './useCloudSync'
 
 const STORAGE_KEY = 'gymduda:state'
@@ -83,7 +84,10 @@ const migrateV2 = (v2: StateV2): GymState => ({ ...v2, version: 3, activities: {
 function sanitize(state: GymState): GymState {
   const ids = new Set(state.workouts.map((w) => w.id))
   const queue = state.queue.filter((id) => ids.has(id))
-  const extras = state.checkins !== undefined ? { checkins: sanitizeCheckins(state.checkins) } : {}
+  const extras = {
+    ...(state.checkins !== undefined && { checkins: sanitizeCheckins(state.checkins) }),
+    ...(state.freezePurchases !== undefined && { freezePurchases: sanitizeFreezePurchases(state.freezePurchases) }),
+  }
   return { ...state, ...extras, queue, pointer: normalizePointer(state.pointer, queue.length) }
 }
 
@@ -463,6 +467,13 @@ export function useGymStore({ onSyncReplaced }: { onSyncReplaced?: () => void } 
           else delete checkins[date]
           return { ...s, checkins }
         })
+      },
+
+      /* ----- Gamificação ----- */
+
+      /** Compra um congelamento hoje, se saldo e estoque permitirem (validado sobre o estado mais recente). */
+      buyFreeze(today: string) {
+        setState((s) => withFreezePurchase(s, today, { id: uid(), date: today, at: Date.now() }))
       },
 
       /* ----- Geral ----- */

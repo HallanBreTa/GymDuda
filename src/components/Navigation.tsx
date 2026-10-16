@@ -13,7 +13,7 @@ const TABS: { id: Tab; label: string; icon: typeof Flame }[] = [
 type Props = { tab: Tab; onChange: (tab: Tab) => void }
 
 /** Barra superior em telas médias+ */
-export function TopBar({ tab, onChange }: Props) {
+export function TopBar({ tab, onChange, streak }: Props & { streak: number }) {
   return (
     <header className="sticky top-0 z-40 hidden border-b border-ink-800/80 bg-ink-950/85 backdrop-blur-xl md:block">
       <div className="mx-auto flex h-16 max-w-3xl items-center justify-between px-6">
@@ -35,6 +35,7 @@ export function TopBar({ tab, onChange }: Props) {
               </button>
             ))}
           </nav>
+          <StreakBadge count={streak} onClick={() => onChange('home')} />
           <SettingsButton tab={tab} onChange={onChange} />
         </div>
       </div>
@@ -86,6 +87,22 @@ export function SettingsButton({ tab, onChange }: Props) {
       }`}
     >
       <Settings size={21} strokeWidth={active ? 2.5 : 2} />
+    </button>
+  )
+}
+
+/** Selo da sequência (🔥 N) no topo; leva à aba Início. */
+export function StreakBadge({ count, onClick }: { count: number; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={`Sequência: ${count} ${count === 1 ? 'dia' : 'dias'}`}
+      className={`inline-flex h-10 items-center gap-1 rounded-full px-3 text-sm font-black tabular-nums transition active:scale-95 ${
+        count ? 'bg-orange-400/15 text-orange-400' : 'bg-ink-800 text-ink-400'
+      }`}
+    >
+      <Flame size={17} fill={count ? 'currentColor' : 'none'} /> {count}
     </button>
   )
 }
