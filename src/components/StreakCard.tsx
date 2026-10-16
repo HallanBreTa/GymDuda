@@ -138,8 +138,13 @@ function ShopSheet({
                 Estoque: {streak.freezes}/{MAX_FREEZES}
               </p>
             </div>
-            <Button onClick={onBuy} disabled={!check.ok} className="min-h-11 px-4">
-              <Coins size={16} /> {FREEZE_PRICE}
+            <Button
+              onClick={onBuy}
+              disabled={!check.ok}
+              aria-label={`Comprar congelamento por ${FREEZE_PRICE} moedas`}
+              className="min-h-11 px-4"
+            >
+              Comprar · <Coins size={16} /> {FREEZE_PRICE}
             </Button>
           </div>
           {!check.ok && (
