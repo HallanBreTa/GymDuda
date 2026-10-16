@@ -261,6 +261,27 @@ t('parseState limpa freezePurchases e aceita estado sem o campo', () => {
   assert.deepEqual(parsed.freezePurchases, [good])
 })
 
+t('trocar o plano (startDate para frente) não apaga faltas antigas', () => {
+  const s = base()
+  doneAll(s, '2026-09-28', '2026-10-13', ['2026-10-06'])
+  s.startDate = '2026-10-13' // como o withNewPlan faz: início = último treino concluído
+  const r = S.computeStreak(s, TODAY)
+  assert.equal(r.days['2026-10-06'].outcome, 'broken')
+  assert.equal(r.current, 4)
+  assert.equal(r.best, 5)
+  assert.equal(r.earned, 90)
+})
+
+t('streakEventText: registro retroativo com sequência zerada', () => {
+  const s = base()
+  doneAll(s, '2026-10-01', '2026-10-12', ['2026-10-06', '2026-10-08']) // faltas em 06 e 08: o registro retroativo não chega a um marco
+  // 13/10 (ter) ficou sem treino → hoje (14/10) a sequência está zerada
+  const before = S.computeStreak(s, TODAY)
+  assert.equal(before.current, 0)
+  done(s, '2026-10-06') // registra um treino antigo esquecido
+  assert.equal(S.streakEventText(before, S.computeStreak(s, TODAY)), '+10 moedas · treino registrado')
+})
+
 console.log(`\n${ok} testes OK${failed ? `, ${failed} FALHARAM` : ''}`)
 await server.close()
 process.exitCode = failed ? 1 : 0

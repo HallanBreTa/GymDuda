@@ -64,7 +64,7 @@ export function StreakCard({ streak, purchases, onBuy }: { streak: StreakResult;
           <div className="mb-1 flex justify-between gap-2 text-[12px] text-ink-400">
             <span>Próximo marco: {m.at} dias</span>
             <span>
-              faltam {m.remaining} · +{m.bonus} moedas
+              faltam {m.remaining} {daysWord(m.remaining)} · +{m.bonus} moedas
             </span>
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-ink-800">
@@ -134,17 +134,17 @@ function ShopSheet({
             </span>
             <div className="min-w-0 flex-1">
               <p className="font-bold">Congelamento</p>
-              <p className="text-[13px] text-ink-400">
-                Estoque: {streak.freezes}/{MAX_FREEZES}
+              <p className="inline-flex items-center gap-1 text-[13px] text-ink-400">
+                <Coins size={13} className="text-amber-400" /> {FREEZE_PRICE} · Estoque: {streak.freezes}/{MAX_FREEZES}
               </p>
             </div>
             <Button
               onClick={onBuy}
               disabled={!check.ok}
               aria-label={`Comprar congelamento por ${FREEZE_PRICE} moedas`}
-              className="min-h-11 px-4"
+              className="shrink-0"
             >
-              Comprar · <Coins size={16} /> {FREEZE_PRICE}
+              Comprar
             </Button>
           </div>
           {!check.ok && (

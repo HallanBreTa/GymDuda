@@ -129,4 +129,4 @@ export type CheckIn = {
 /** `date`: dia da compra (yyyy-mm-dd); o congelamento cobre faltas a partir dele. */
 export type FreezePurchase = { id: string; date: string; at: number }
 
-export type Tab ='home' | 'today' | 'workouts' | 'week' | 'stats' | 'settings'
+export type Tab = 'home' | 'today' | 'workouts' | 'week' | 'stats' | 'settings'

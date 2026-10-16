@@ -30,7 +30,8 @@ O cálculo percorre os dias em ordem, do primeiro dia com dados até hoje. Cada 
 | `pending` | Dia de treino **hoje**, ainda não cumprido | Nada muda | 0 |
 | `rest_active` | Dia de descanso com treino concluído ou qualquer atividade | Nada muda | +5 |
 | `rest` | Dia de descanso sem nada | Nada muda | 0 |
-| `ignored` | Antes de `startDate` e sem registro | — | — |
+
+O cálculo começa no primeiro dia com dados (o menor entre `startDate` e os registros); trocar o plano, que move `startDate` para frente, não apaga faltas antigas.
 
 Regras complementares:
 - **Marcos:** o bônus é pago sempre que a sequência **atinge** o valor (7, 30 ou 100), inclusive depois de uma quebra.
@@ -70,7 +71,7 @@ export const FREEZE_PRICE = 50
 export const MAX_FREEZES = 2
 export const MILESTONES: Record<number, number> = { 7: 20, 30: 50, 100: 100 }
 
-export type DayOutcome = 'kept' | 'frozen' | 'broken' | 'pending' | 'rest_active' | 'rest' | 'ignored'
+export type DayOutcome = 'kept' | 'frozen' | 'broken' | 'pending' | 'rest_active' | 'rest'
 
 export type StreakResult = {
   current: number

@@ -16,7 +16,7 @@ export const MAX_FREEZES = 2
 /** Sequência atingida → bônus em moedas (pago toda vez que a sequência chega ao valor). */
 export const MILESTONES: Record<number, number> = { 7: 20, 30: 50, 100: 100 }
 
-export type DayOutcome = 'kept' | 'frozen' | 'broken' | 'pending' | 'rest_active' | 'rest' | 'ignored'
+export type DayOutcome = 'kept' | 'frozen' | 'broken' | 'pending' | 'rest_active' | 'rest'
 
 export type DayResult = { outcome: DayOutcome; coins: number; streak: number; milestone?: number }
 
@@ -38,8 +38,11 @@ export type StreakResult = {
 /** Antes de aplicar o estoque: 'missed' vira 'frozen' ou 'broken'. */
 type RawOutcome = Exclude<DayOutcome, 'frozen' | 'broken'> | 'missed'
 
+/**
+ * Resultado bruto de um dia. Dias antes de `startDate` (plano trocado) valem como os demais: o
+ * cálculo começa no primeiro dia com dados, então faltas antigas não somem.
+ */
 function classify(state: GymState, date: string, plan: DayPlan, today: string): RawOutcome {
-  if (plan.kind === 'before_start') return 'ignored'
   if (isTrainingDay(state, date)) {
     if (plan.kind === 'done' || plan.kind === 'replaced') return 'kept'
     // Sem registro, "Descansou" ou sessão iniciada e não concluída. Hoje ainda dá tempo.
@@ -52,8 +55,17 @@ const MILESTONE_STEPS = Object.keys(MILESTONES)
   .map(Number)
   .sort((a, b) => a - b)
 
+/** Limite de dias varridos para trás (~10 anos): proteção contra datas corrompidas. */
+const MAX_SCAN_DAYS = 3660
+
+/**
+ * Percorre dia a dia do primeiro dia com dados (o menor entre `startDate` e os registros) até hoje.
+ * Trocar o plano move `startDate` para frente, mas não apaga faltas antigas.
+ */
 export function computeStreak(state: GymState, today: string): StreakResult {
-  const first = [state.startDate, ...Object.keys(state.history), ...Object.keys(state.activities)].filter((d) => d <= today).sort()[0] ?? today
+  const earliest = [state.startDate, ...Object.keys(state.history), ...Object.keys(state.activities)].filter((d) => d <= today).sort()[0] ?? today
+  const limit = addDays(today, -MAX_SCAN_DAYS)
+  const first = earliest < limit ? limit : earliest
   const dates: string[] = []
   for (let d = first; d <= today; d = addDays(d, 1)) dates.push(d)
   const plans = projectDays(state, dates, today)
@@ -148,13 +160,17 @@ const daysLabel = (n: number) => `${n} ${n === 1 ? 'dia seguido' : 'dias seguido
 
 /**
  * Texto da comemoração depois de uma ação (concluir treino, registrar atividade…), comparando o
- * resultado de antes com o de depois. Prioridade: marco > dia cumprido > extra. null = nada a comemorar.
+ * resultado de antes com o de depois. Prioridade: marco > hoje cumprido com sequência > treino
+ * registrado (dia antigo) > extra. As moedas somam todos os dias que ganharam. null = nada a comemorar.
  */
 export function streakEventText(prev: StreakResult, next: StreakResult): string | null {
   const gained = Object.entries(next.days).filter(([d, r]) => r.coins > (prev.days[d]?.coins ?? 0))
+  const total = gained.reduce((sum, [d, r]) => sum + r.coins - (prev.days[d]?.coins ?? 0), 0)
   const milestone = gained.find(([d, r]) => r.milestone && prev.days[d]?.milestone !== r.milestone)?.[1].milestone
   if (milestone) return `🏅 ${daysLabel(milestone)}! +${MILESTONES[milestone]} moedas de bônus`
-  if (gained.some(([, r]) => r.outcome === 'kept')) return `🔥 ${daysLabel(next.current)} · +${COINS_PER_DAY} moedas`
-  if (gained.some(([, r]) => r.outcome === 'rest_active')) return `+${COINS_REST_EXTRA} moedas · treino extra`
+  const lastDay = Object.keys(next.days).at(-1)
+  if (next.current > 0 && gained.some(([d, r]) => d === lastDay && r.outcome === 'kept')) return `🔥 ${daysLabel(next.current)} · +${total} moedas`
+  if (gained.some(([, r]) => r.outcome === 'kept')) return `+${total} moedas · treino registrado`
+  if (gained.some(([, r]) => r.outcome === 'rest_active')) return `+${total} moedas · treino extra`
   return null
 }

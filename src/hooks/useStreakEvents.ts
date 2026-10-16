@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { streakEventText, type StreakResult } from '../domain/streak'
 
-/** Tempo depois de uma ação do usuário em que uma mudança na sequência vira comemoração. */
+/** Limite máximo da janela de comemoração; na prática ela fecha no fim do turno da ação (ver `arm`). */
 const ARM_MS = 2000
 
 /**
  * Comemora (via `onEvent`) só mudanças causadas por uma ação do usuário: abrir o app, virar o dia
- * ou receber dados da nuvem não disparam nada. Devolve `arm()`, para chamar antes da ação.
+ * ou receber dados da nuvem não disparam nada. Devolve `arm()`, para chamar antes da ação: a janela
+ * fecha logo depois (próxima macrotask), cobrindo só a renderização causada pela própria ação.
  */
 export function useStreakEvents(streak: StreakResult, onEvent: (text: string) => void) {
   const prev = useRef(streak)
@@ -24,5 +25,8 @@ export function useStreakEvents(streak: StreakResult, onEvent: (text: string) =>
 
   return useCallback(() => {
     armedUntil.current = Date.now() + ARM_MS
+    window.setTimeout(() => {
+      armedUntil.current = 0
+    }, 0)
   }, [])
 }
