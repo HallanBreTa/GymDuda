@@ -1,14 +1,15 @@
-import { ChartColumn } from 'lucide-react'
+import { ChartColumn, TrendingDown, TrendingUp } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { fmt, fmtCompact } from '../chartScale'
 import { BarList, ChartCard, ColumnChart, LineChart, type Column } from '../components/charts'
 import { EmptyState } from '../components/ui'
 import { ACTIVITY_META } from '../data/activityTypes'
 import { formatDuration } from '../domain/activities'
+import { average, checkinValues, moodMeta, painLabel, painTone } from '../domain/checkins'
 import { formatSet } from '../domain/sets'
 import { computeStats, firstDataDate, type Stats } from '../domain/stats'
-import type { GymState } from '../types'
-import { addDays, diffDays, formatShortDate, WEEKDAYS, WEEKDAYS_SHORT } from '../utils'
+import type { GymState, Mood } from '../types'
+import { addDays, diffDays, formatShortDate, weekdayOf, WEEKDAYS, WEEKDAYS_SHORT } from '../utils'
 
 const PERIODS: { days: number | null; label: string }[] = [
   { days: 30, label: '30 dias' },
@@ -50,6 +51,8 @@ export function StatsView({ state, today }: { state: GymState; today: string }) 
         <h1 className="text-3xl font-black tracking-tight">Seus dados</h1>
       </header>
 
+      <CheckinWeek state={state} today={today} />
+
       <div className="grid grid-cols-4 gap-2" role="group" aria-label="Período">
         {PERIODS.map((p) => (
           <button
@@ -83,6 +86,105 @@ export function StatsView({ state, today }: { state: GymState; today: string }) 
         </>
       )}
     </div>
+  )
+}
+
+/* ---------- Disposição e dor (últimos 7 dias, fora do filtro de período) ---------- */
+
+/** Média dos últimos 7 dias e tendência contra os 7 anteriores (diferença ≥ 0,5). */
+function weekAverage(state: GymState, field: 'mood' | 'backPain', today: string) {
+  const avg = average(checkinValues(state, field, today, 7))
+  const prev = average(checkinValues(state, field, addDays(today, -7), 7))
+  const delta = avg !== null && prev !== null && Math.abs(avg - prev) >= 0.5 ? avg - prev : 0
+  // Disposição: subir é melhorar. Dor: descer é melhorar.
+  const better = field === 'mood' ? delta > 0 : delta < 0
+  return { avg, prev, trend: delta === 0 ? null : better ? ('better' as const) : ('worse' as const), up: delta > 0 }
+}
+
+function CheckinWeek({ state, today }: { state: GymState; today: string }) {
+  const dates = Array.from({ length: 7 }, (_, i) => addDays(today, i - 6))
+  if (!dates.some((d) => state.checkins?.[d])) return null
+  const mood = weekAverage(state, 'mood', today)
+  const pain = weekAverage(state, 'backPain', today)
+
+  const tiles = [
+    {
+      label: 'Disposição média',
+      value: mood.avg !== null ? `${fmt(mood.avg)}/5` : '—',
+      detail: mood.avg !== null ? moodMeta(Math.min(5, Math.max(1, Math.round(mood.avg))) as Mood).label : 'sem registro',
+      tone: 'text-ink-100',
+      ...mood,
+    },
+    {
+      label: 'Dor na coluna média',
+      value: pain.avg !== null ? `${fmt(pain.avg)}/10` : '—',
+      detail: pain.avg !== null ? painLabel(Math.round(pain.avg)) : 'sem registro',
+      tone: pain.avg !== null ? painTone(Math.round(pain.avg)).text : '',
+      ...pain,
+    },
+  ]
+
+  return (
+    <ChartCard
+      title="Como você está"
+      subtitle="Últimos 7 dias · disposição e dor na coluna"
+      table={{
+        head: ['Dia', 'Disposição', 'Dor', 'Obs.'],
+        rows: dates.map((d) => {
+          const c = state.checkins?.[d]
+          return [
+            `${WEEKDAYS_SHORT[weekdayOf(d)]} ${formatShortDate(d)}`,
+            c?.mood ? `${c.mood} · ${moodMeta(c.mood).label}` : '—',
+            c?.backPain ?? '—',
+            c?.note.trim() || '—',
+          ]
+        }),
+      }}
+    >
+      <div className="mb-4 grid grid-cols-2 gap-2">
+        {tiles.map((t) => (
+          <div key={t.label} className="rounded-2xl bg-ink-850 p-3">
+            <p className="text-[12px] font-semibold text-ink-400">{t.label}</p>
+            <p className={`mt-0.5 text-xl font-black tracking-tight tabular-nums ${t.tone}`}>{t.value}</p>
+            <p className="text-[12px] text-ink-400">
+              {t.detail}
+              {t.trend && ` · antes ${fmt(t.prev!)}`}
+            </p>
+            {t.trend && (
+              <p className={`mt-1 inline-flex items-center gap-1 text-[12px] font-semibold ${t.trend === 'better' ? 'text-accent' : 'text-red-400'}`}>
+                {t.up ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                {t.trend === 'better' ? 'melhorando' : 'piorando'}
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+      <ul className="grid grid-cols-7 gap-1">
+        {dates.map((d) => {
+          const c = state.checkins?.[d]
+          const Mood = c?.mood ? moodMeta(c.mood).icon : null
+          const p = c?.backPain ?? null
+          return (
+            <li
+              key={d}
+              className={`flex flex-col items-center gap-1.5 rounded-xl py-2 ${d === today ? 'bg-ink-850 ring-1 ring-lime/40' : ''}`}
+              title={c?.note || undefined}
+            >
+              <span className="text-[11px] font-semibold text-ink-400">{WEEKDAYS_SHORT[weekdayOf(d)]}</span>
+              <span className="grid h-6 place-items-center text-ink-300">{Mood ? <Mood size={20} /> : <span className="text-ink-600">–</span>}</span>
+              <span
+                className={`grid size-8 place-items-center rounded-lg text-sm font-bold tabular-nums ${
+                  p !== null ? `${painTone(p).soft} ${painTone(p).text}` : 'text-ink-600'
+                }`}
+              >
+                {p ?? '–'}
+              </span>
+            </li>
+          )
+        })}
+      </ul>
+      <p className="mt-2 text-[12px] text-ink-400">Rostinho = disposição · número = dor na coluna (0–10).</p>
+    </ChartCard>
   )
 }
 

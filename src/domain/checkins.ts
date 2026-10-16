@@ -1,12 +1,7 @@
-/**
- * Check-in diário (disposição e dor na coluna) e meta de dias da semana.
- *
- * A meta é só um contador ("esta semana sei que consigo ir 3 dias"): não mexe na fila
- * nem nos dias de treino. Sem meta definida, vale o número de dias de treino marcados.
- */
+/** Check-in diário (disposição e dor na coluna) e resumo da semana para a aba Início. */
 import { Annoyed, Frown, Laugh, Meh, Smile } from 'lucide-react'
 import type { CheckIn, GymState, Mood } from '../types'
-import { addDays, diffDays, startOfWeek } from '../utils'
+import { addDays, startOfWeek } from '../utils'
 import { projectDays, type DayPlan } from './queue'
 
 export const MOODS: { value: Mood; label: string; icon: typeof Smile }[] = [
@@ -21,7 +16,6 @@ export const moodMeta = (mood: Mood) => MOODS[mood - 1]
 
 export const isMood = (v: unknown): v is Mood => typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= 5
 export const isPain = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= 10
-export const isWeekGoal = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= 7
 
 export function painLabel(n: number) {
   if (n === 0) return 'sem dor'
@@ -64,47 +58,30 @@ export function sanitizeCheckins(raw: unknown): Record<string, CheckIn> {
   return out
 }
 
-export function sanitizeWeekGoals(raw: unknown): Record<string, number> {
-  if (!raw || typeof raw !== 'object') return {}
-  return Object.fromEntries(Object.entries(raw as Record<string, unknown>).filter((e): e is [string, number] => isWeekGoal(e[1])))
-}
-
-export const defaultWeekGoal = (state: GymState) => Math.max(1, state.trainingDays.filter(Boolean).length)
-
 export type WeekProgress = {
   weekStart: string
   dates: string[]
   plans: Record<string, DayPlan>
-  goal: number
-  isDefaultGoal: boolean
   /** Dias da semana com treino concluído. */
   done: number
-  /** Quanto falta para a meta (0 se já bateu). */
-  remaining: number
-  /** Dias da semana ainda disponíveis para treinar (hoje conta se ainda não treinou). */
-  daysLeft: number
 }
 
 export function weekProgress(state: GymState, today: string): WeekProgress {
   const weekStart = startOfWeek(today)
   const dates = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
   const plans = projectDays(state, dates, today)
-  const custom = state.weekGoals?.[weekStart]
-  const goal = custom ?? defaultWeekGoal(state)
   const done = dates.filter((d) => plans[d].kind === 'done').length
-  const todayDone = plans[today]?.kind === 'done'
-  const daysLeft = diffDays(today, addDays(weekStart, 6)) + (todayDone ? 0 : 1)
-  return { weekStart, dates, plans, goal, isDefaultGoal: custom === undefined, done, remaining: Math.max(0, goal - done), daysLeft }
+  return { weekStart, dates, plans, done }
 }
 
 /** Média de um conjunto de números (null se vazio). */
 export const average = (ns: number[]) => (ns.length ? ns.reduce((a, b) => a + b, 0) / ns.length : null)
 
-/** Valores de dor registrados nos `days` dias terminando em `end` (inclusive). */
-export function painValues(state: GymState, end: string, days: number): number[] {
+/** Valores de disposição ou dor registrados nos `days` dias terminando em `end` (inclusive). */
+export function checkinValues(state: GymState, field: 'mood' | 'backPain', end: string, days: number): number[] {
   const out: number[] = []
   for (let i = days - 1; i >= 0; i--) {
-    const v = state.checkins?.[addDays(end, -i)]?.backPain
+    const v = state.checkins?.[addDays(end, -i)]?.[field]
     if (v !== null && v !== undefined) out.push(v)
   }
   return out

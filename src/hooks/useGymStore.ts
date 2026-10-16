@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createInitialState, TEMPLATES } from '../data/templates'
 import { canReplaceOn } from '../domain/activities'
-import { mergeCheckin, sanitizeCheckins, sanitizeWeekGoals } from '../domain/checkins'
+import { mergeCheckin, sanitizeCheckins } from '../domain/checkins'
 import { isTrainingDay, normalizePointer, pointerAfterCompletion, pointerFromHistory, queueAt } from '../domain/queue'
 import {
   doneSessionsDesc,
@@ -83,10 +83,7 @@ const migrateV2 = (v2: StateV2): GymState => ({ ...v2, version: 3, activities: {
 function sanitize(state: GymState): GymState {
   const ids = new Set(state.workouts.map((w) => w.id))
   const queue = state.queue.filter((id) => ids.has(id))
-  const extras = {
-    ...(state.checkins !== undefined && { checkins: sanitizeCheckins(state.checkins) }),
-    ...(state.weekGoals !== undefined && { weekGoals: sanitizeWeekGoals(state.weekGoals) }),
-  }
+  const extras = state.checkins !== undefined ? { checkins: sanitizeCheckins(state.checkins) } : {}
   return { ...state, ...extras, queue, pointer: normalizePointer(state.pointer, queue.length) }
 }
 
@@ -455,7 +452,7 @@ export function useGymStore({ onSyncReplaced }: { onSyncReplaced?: () => void } 
         })
       },
 
-      /* ----- Check-in e meta da semana ----- */
+      /* ----- Check-in ----- */
 
       /** Mescla o check-in do dia. Se ficar vazio (sem disposição, dor ou nota), a entrada some. */
       saveCheckin(date: string, patch: Partial<Omit<CheckIn, 'updatedAt'>>) {
@@ -465,16 +462,6 @@ export function useGymStore({ onSyncReplaced }: { onSyncReplaced?: () => void } 
           if (next) checkins[date] = next
           else delete checkins[date]
           return { ...s, checkins }
-        })
-      },
-
-      /** Meta de dias na academia da semana (`weekStart` = segunda-feira). null volta ao padrão. */
-      setWeekGoal(weekStart: string, goal: number | null) {
-        setState((s) => {
-          const weekGoals = { ...s.weekGoals }
-          if (goal === null) delete weekGoals[weekStart]
-          else weekGoals[weekStart] = Math.min(7, Math.max(1, Math.round(goal)))
-          return { ...s, weekGoals }
         })
       },
 

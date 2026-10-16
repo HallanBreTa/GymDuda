@@ -107,8 +107,6 @@ export type GymState = {
   startDate: string
   /** Check-in diário (disposição e dor na coluna) por data ISO. Opcional: estados antigos não têm. */
   checkins?: Record<string, CheckIn>
-  /** Meta de dias na academia por semana (chave = segunda-feira ISO). Ausente = nº de dias de treino. */
-  weekGoals?: Record<string, number>
 }
 
 /* ---------- Check-in diário ---------- */

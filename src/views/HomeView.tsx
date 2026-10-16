@@ -1,11 +1,11 @@
-import { ChevronRight, Minus, Play, Plus, TrendingDown, TrendingUp } from 'lucide-react'
+import { ChevronRight, Play } from 'lucide-react'
 import { useMemo, useState, type ReactNode } from 'react'
 import { TextArea, WorkoutBadge } from '../components/ui'
-import { average, moodMeta, MOODS, painLabel, painTone, painValues, weekProgress } from '../domain/checkins'
+import { MOODS, painLabel, painTone, weekProgress } from '../domain/checkins'
 import { nextPlannedDay, type DayPlan } from '../domain/queue'
 import type { GymStore } from '../hooks/useGymStore'
 import type { CheckIn } from '../types'
-import { addDays, formatLongDate, relativeDayLabel, weekdayOf, WEEKDAYS_SHORT, workoutBadge } from '../utils'
+import { addDays, formatLongDate, relativeDayLabel, WEEKDAYS_SHORT, workoutBadge } from '../utils'
 
 type Props = {
   store: GymStore
@@ -49,8 +49,6 @@ export function HomeView({ store, today, onGoToday, onOpenDay }: Props) {
         yesterdayPain={yesterday?.backPain ?? null}
         onChange={(patch) => store.saveCheckin(today, patch)}
       />
-
-      <LastDays store={store} today={today} />
 
       <WeekCard store={store} today={today} onGoToday={onGoToday} onOpenDay={onOpenDay} />
     </div>
@@ -149,121 +147,19 @@ function CheckinCard({
   )
 }
 
-/* ---------- Últimos 7 dias ---------- */
-
-function LastDays({ store, today }: { store: GymStore; today: string }) {
-  const { state } = store
-  const dates = Array.from({ length: 7 }, (_, i) => addDays(today, i - 6))
-  const avg = average(painValues(state, today, 7))
-  const prevAvg = average(painValues(state, addDays(today, -7), 7))
-  const trend = avg !== null && prevAvg !== null && Math.abs(avg - prevAvg) >= 0.5 ? (avg < prevAvg ? 'down' : 'up') : null
-  const fmt = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 1 })
-
-  if (!dates.some((d) => state.checkins?.[d])) return null
-
-  return (
-    <Card title="Últimos 7 dias" hint="Disposição e dor na coluna">
-      <ul className="grid grid-cols-7 gap-1">
-        {dates.map((d) => {
-          const c = state.checkins?.[d]
-          const Mood = c?.mood ? moodMeta(c.mood).icon : null
-          return (
-            <li
-              key={d}
-              className={`flex flex-col items-center gap-1.5 rounded-xl py-2 ${d === today ? 'bg-ink-850 ring-1 ring-lime/40' : ''}`}
-              title={c?.note || undefined}
-            >
-              <span className="text-[11px] font-semibold text-ink-400">{WEEKDAYS_SHORT[weekdayOf(d)]}</span>
-              <span className="grid h-6 place-items-center text-ink-300">{Mood ? <Mood size={20} /> : <span className="text-ink-600">–</span>}</span>
-              <span
-                className={`grid size-8 place-items-center rounded-lg text-sm font-bold tabular-nums ${
-                  c?.backPain !== null && c?.backPain !== undefined ? `${painTone(c.backPain).soft} ${painTone(c.backPain).text}` : 'text-ink-600'
-                }`}
-              >
-                {c?.backPain ?? '–'}
-              </span>
-            </li>
-          )
-        })}
-      </ul>
-      {avg !== null && (
-        <p className="mt-3 flex items-center gap-1.5 text-[13px] text-ink-400">
-          Dor média: <strong className={painTone(Math.round(avg)).text}>{fmt(avg)}/10</strong>
-          {trend === 'down' && (
-            <span className="inline-flex items-center gap-1 text-accent">
-              <TrendingDown size={15} /> melhorando
-            </span>
-          )}
-          {trend === 'up' && (
-            <span className="inline-flex items-center gap-1 text-red-400">
-              <TrendingUp size={15} /> piorando
-            </span>
-          )}
-          {trend && prevAvg !== null && <span>(antes: {fmt(prevAvg)})</span>}
-        </p>
-      )}
-    </Card>
-  )
-}
-
 /* ---------- Esta semana ---------- */
 
 function WeekCard({ store, today, onGoToday, onOpenDay }: Props) {
   const { state } = store
   const week = useMemo(() => weekProgress(state, today), [state, today])
-  const { goal, done, remaining, daysLeft } = week
   const todayPlan = week.plans[today]
   const next = useMemo(() => nextPlannedDay(state, today, today), [state, today])
   const nextWorkout = next ? state.workouts.find((w) => w.id === next.workoutId) : undefined
   const inProgress = todayPlan?.kind === 'in_progress' ? todayPlan.session : null
 
-  const message =
-    remaining === 0
-      ? 'Meta da semana batida! 🎉'
-      : remaining > daysLeft
-        ? `Faltam ${remaining}, mas só restam ${daysLeft} ${daysLeft === 1 ? 'dia' : 'dias'} na semana`
-        : `${remaining === 1 ? 'Falta 1 dia' : `Faltam ${remaining} dias`} para a meta`
-
   return (
-    <Card title="Esta semana" hint={`${done}/${goal} ${goal === 1 ? 'dia' : 'dias'}`}>
-      <div className="flex items-center gap-3 rounded-2xl bg-ink-850 p-3">
-        <p className="min-w-0 flex-1 text-[15px] leading-snug font-semibold">
-          Vou conseguir ir
-          <span className="block text-xs font-normal text-ink-400">
-            {week.isDefaultGoal ? 'padrão (dias de treino)' : (
-              <button type="button" className="font-semibold text-accent underline-offset-2 hover:underline" onClick={() => store.setWeekGoal(week.weekStart, null)}>
-                voltar ao padrão
-              </button>
-            )}
-          </span>
-        </p>
-        <StepButton label="Menos um dia" disabled={goal <= 1} onClick={() => store.setWeekGoal(week.weekStart, goal - 1)}>
-          <Minus size={18} />
-        </StepButton>
-        <p className="w-14 text-center leading-none" aria-live="polite">
-          <span className="text-3xl font-black tabular-nums">{goal}</span>
-          <span className="block text-[11px] font-semibold text-ink-400">{goal === 1 ? 'dia' : 'dias'}</span>
-        </p>
-        <StepButton label="Mais um dia" disabled={goal >= 7} onClick={() => store.setWeekGoal(week.weekStart, goal + 1)}>
-          <Plus size={18} />
-        </StepButton>
-      </div>
-
-      <div className="mt-4">
-        <div className="mb-1.5 flex items-baseline justify-between text-[13px]">
-          <span className="font-semibold">{message}</span>
-          <span className="font-bold text-accent tabular-nums">
-            {done}/{goal}
-          </span>
-        </div>
-        <div className="flex gap-1" role="progressbar" aria-valuemin={0} aria-valuemax={goal} aria-valuenow={Math.min(done, goal)} aria-label="Dias feitos na semana">
-          {Array.from({ length: Math.max(goal, done) }, (_, i) => (
-            <span key={i} className={`h-2.5 flex-1 rounded-full ${i < done ? 'bg-lime' : 'bg-ink-800'}`} />
-          ))}
-        </div>
-      </div>
-
-      <ul className="mt-4 grid grid-cols-7 gap-1">
+    <Card title="Esta semana" hint={`${week.done} ${week.done === 1 ? 'treino feito' : 'treinos feitos'}`}>
+      <ul className="grid grid-cols-7 gap-1">
         {week.dates.map((d, i) => {
           const plan = week.plans[d]
           return (
@@ -330,20 +226,6 @@ function dotLabel(plan: DayPlan, workouts: { id: string; name: string }[]) {
     default:
       return ''
   }
-}
-
-function StepButton({ label, disabled, onClick, children }: { label: string; disabled?: boolean; onClick: () => void; children: ReactNode }) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      disabled={disabled}
-      onClick={onClick}
-      className="grid size-11 shrink-0 place-items-center rounded-xl bg-ink-800 text-ink-100 transition hover:bg-ink-700 active:scale-95 disabled:opacity-30"
-    >
-      {children}
-    </button>
-  )
 }
 
 function Card({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
