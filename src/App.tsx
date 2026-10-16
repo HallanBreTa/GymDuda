@@ -1,12 +1,14 @@
 import { useCallback, useMemo, useState } from 'react'
 import { ActivityForm } from './components/ActivityForm'
-import { BottomNav, Logo, SettingsButton, TopBar } from './components/Navigation'
+import { BottomNav, Logo, SettingsButton, StreakBadge, TopBar } from './components/Navigation'
 import { RestTimerBar } from './components/RestTimerBar'
 import { Toast, type ToastMessage } from './components/Toast'
 import { WorkoutEditor } from './components/WorkoutEditor'
 import { computeStreak } from './domain/streak'
-import { useGymStore } from './hooks/useGymStore'
+import { vibrate } from './feedback'
+import { useGymStore, type GymStore } from './hooks/useGymStore'
 import { useRestTimer } from './hooks/useRestTimer'
+import { useStreakEvents } from './hooks/useStreakEvents'
 import { useToday } from './hooks/useToday'
 import { useTheme } from './theme'
 import type { Activity, Tab, Workout } from './types'
@@ -36,6 +38,19 @@ export default function App() {
   const rest = useRestTimer()
   // Sequência/moedas derivadas do histórico: recalcula quando o estado ou o dia mudam.
   const streak = useMemo(() => computeStreak(state, today), [state, today])
+  const celebrate = useCallback((text: string) => {
+    setToast({ id: Date.now(), text })
+    vibrate([40, 60, 40])
+  }, [])
+  const armStreak = useStreakEvents(streak, celebrate)
+  // Concluir treino pela aba Hoje é uma ação que pode render moedas: arma a comemoração antes.
+  const trackedStore: GymStore = {
+    ...store,
+    completeSession: (date: string) => {
+      armStreak()
+      store.completeSession(date)
+    },
+  }
   const [theme, setTheme] = useTheme()
 
   const [tab, setTab] = useState<Tab>('home')
@@ -59,6 +74,7 @@ export default function App() {
 
   const saveActivity = (date: string, activity: Activity, previousDate?: string) => {
     const isNew = !activityForm?.editing
+    armStreak()
     store.saveActivity(date, activity, today, previousDate)
     setHighlightActivityId(activity.id)
     // Leva o usuário para o dia salvo (útil quando escolheu "ontem" ou outra data).
@@ -72,12 +88,13 @@ export default function App() {
 
   return (
     <>
-      <TopBar tab={tab} onChange={changeTab} />
+      <TopBar tab={tab} onChange={changeTab} streak={streak.current} />
 
       <main className="mx-auto max-w-3xl px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[calc(6rem+env(safe-area-inset-bottom))] sm:px-6 md:pt-8 md:pb-12">
         <div className="mb-5 flex items-center justify-between md:hidden">
           <Logo />
-          <div className="-mr-2">
+          <div className="-mr-2 flex items-center gap-1">
+            <StreakBadge count={streak.current} onClick={() => changeTab('home')} />
             <SettingsButton tab={tab} onChange={changeTab} />
           </div>
         </div>
@@ -99,7 +116,7 @@ export default function App() {
         )}
         {tab === 'today' && (
           <TodayView
-            store={store}
+            store={trackedStore}
             today={today}
             selectedDate={selectedDate}
             onSelectDate={selectDate}
