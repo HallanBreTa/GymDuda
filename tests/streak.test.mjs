@@ -5,6 +5,7 @@ import assert from 'node:assert/strict'
 const server = await createServer({ root: process.argv[2] ?? process.cwd(), server: { middlewareMode: true }, appType: 'custom', logLevel: 'error' })
 const S = await server.ssrLoadModule('/src/domain/streak.ts')
 const T = await server.ssrLoadModule('/src/data/templates.ts')
+const Store = await server.ssrLoadModule('/src/hooks/useGymStore.ts')
 let ok = 0
 let failed = 0
 const t = (name, fn) => {
@@ -250,6 +251,14 @@ t('streakEventText: dia cumprido, marco, extra e nada', () => {
   act(e, TODAY)
   assert.equal(S.streakEventText(e0, S.computeStreak(e, TODAY)), '+5 moedas · treino extra')
   assert.equal(S.streakEventText(e0, e0), null)
+})
+
+t('parseState limpa freezePurchases e aceita estado sem o campo', () => {
+  const s = base()
+  assert.equal(Store.parseState(JSON.parse(JSON.stringify(s))).freezePurchases, undefined)
+  const good = { id: 'a', date: '2026-10-01', at: 1 }
+  const parsed = Store.parseState({ ...JSON.parse(JSON.stringify(s)), freezePurchases: [good, { id: 2 }, 'x'] })
+  assert.deepEqual(parsed.freezePurchases, [good])
 })
 
 console.log(`\n${ok} testes OK${failed ? `, ${failed} FALHARAM` : ''}`)
