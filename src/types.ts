@@ -107,6 +107,8 @@ export type GymState = {
   startDate: string
   /** Check-in diário (disposição e dor na coluna) por data ISO. Opcional: estados antigos não têm. */
   checkins?: Record<string, CheckIn>
+  /** Compras de congelamento (gamificação). Sequência e moedas são derivadas do histórico; só isto é salvo. */
+  freezePurchases?: FreezePurchase[]
 }
 
 /* ---------- Check-in diário ---------- */
@@ -122,4 +124,9 @@ export type CheckIn = {
   updatedAt: number
 }
 
-export type Tab = 'home' | 'today' | 'workouts' | 'week' | 'stats' | 'settings'
+/* ---------- Gamificação ---------- */
+
+/** `date`: dia da compra (yyyy-mm-dd); o congelamento cobre faltas a partir dele. */
+export type FreezePurchase = { id: string; date: string; at: number }
+
+export type Tab ='home' | 'today' | 'workouts' | 'week' | 'stats' | 'settings'
