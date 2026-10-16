@@ -1,9 +1,10 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { ActivityForm } from './components/ActivityForm'
 import { BottomNav, Logo, SettingsButton, TopBar } from './components/Navigation'
 import { RestTimerBar } from './components/RestTimerBar'
 import { Toast, type ToastMessage } from './components/Toast'
 import { WorkoutEditor } from './components/WorkoutEditor'
+import { computeStreak } from './domain/streak'
 import { useGymStore } from './hooks/useGymStore'
 import { useRestTimer } from './hooks/useRestTimer'
 import { useToday } from './hooks/useToday'
@@ -33,6 +34,8 @@ export default function App() {
   const { state } = store
   const today = useToday()
   const rest = useRestTimer()
+  // Sequência/moedas derivadas do histórico: recalcula quando o estado ou o dia mudam.
+  const streak = useMemo(() => computeStreak(state, today), [state, today])
   const [theme, setTheme] = useTheme()
 
   const [tab, setTab] = useState<Tab>('home')
@@ -83,6 +86,7 @@ export default function App() {
           <HomeView
             store={store}
             today={today}
+            streak={streak}
             onGoToday={() => {
               selectDate(today)
               changeTab('today')

@@ -1,8 +1,10 @@
-import { ChevronRight, Play } from 'lucide-react'
+import { ChevronRight, Play, Snowflake } from 'lucide-react'
 import { useMemo, useState, type ReactNode } from 'react'
+import { StreakCard } from '../components/StreakCard'
 import { TextArea, WorkoutBadge } from '../components/ui'
 import { MOODS, painLabel, painTone, weekProgress } from '../domain/checkins'
 import { nextPlannedDay, type DayPlan } from '../domain/queue'
+import type { StreakResult } from '../domain/streak'
 import type { GymStore } from '../hooks/useGymStore'
 import type { CheckIn } from '../types'
 import { addDays, formatLongDate, relativeDayLabel, WEEKDAYS_SHORT, workoutBadge } from '../utils'
@@ -10,6 +12,7 @@ import { addDays, formatLongDate, relativeDayLabel, WEEKDAYS_SHORT, workoutBadge
 type Props = {
   store: GymStore
   today: string
+  streak: StreakResult
   /** Vai para a aba Hoje no dia de hoje. */
   onGoToday: () => void
   onOpenDay: (date: string) => void
@@ -30,7 +33,7 @@ const DOT: Record<DayPlan['kind'], string> = {
   before_start: 'bg-ink-900 text-ink-600',
 }
 
-export function HomeView({ store, today, onGoToday, onOpenDay }: Props) {
+export function HomeView({ store, today, streak, onGoToday, onOpenDay }: Props) {
   const { state } = store
   const checkin = state.checkins?.[today]
   const yesterday = state.checkins?.[addDays(today, -1)]
@@ -42,6 +45,8 @@ export function HomeView({ store, today, onGoToday, onOpenDay }: Props) {
         <h1 className="text-3xl font-black tracking-tight">Olá!</h1>
       </header>
 
+      <StreakCard streak={streak} purchases={state.freezePurchases ?? []} onBuy={() => store.buyFreeze(today)} />
+
       {/* key: o rascunho da nota recomeça quando o dia vira */}
       <CheckinCard
         key={today}
@@ -50,7 +55,7 @@ export function HomeView({ store, today, onGoToday, onOpenDay }: Props) {
         onChange={(patch) => store.saveCheckin(today, patch)}
       />
 
-      <WeekCard store={store} today={today} onGoToday={onGoToday} onOpenDay={onOpenDay} />
+      <WeekCard store={store} today={today} streak={streak} onGoToday={onGoToday} onOpenDay={onOpenDay} />
     </div>
   )
 }
@@ -149,7 +154,7 @@ function CheckinCard({
 
 /* ---------- Esta semana ---------- */
 
-function WeekCard({ store, today, onGoToday, onOpenDay }: Props) {
+function WeekCard({ store, today, streak, onGoToday, onOpenDay }: Props) {
   const { state } = store
   const week = useMemo(() => weekProgress(state, today), [state, today])
   const todayPlan = week.plans[today]
@@ -162,16 +167,22 @@ function WeekCard({ store, today, onGoToday, onOpenDay }: Props) {
       <ul className="grid grid-cols-7 gap-1">
         {week.dates.map((d, i) => {
           const plan = week.plans[d]
+          // Falta coberta por congelamento aparece com ❄ em vez do ✕.
+          const frozen = streak.days[d]?.outcome === 'frozen'
           return (
             <li key={d}>
               <button
                 type="button"
                 onClick={() => onOpenDay(d)}
-                aria-label={`${WEEKDAYS_SHORT[i]}: ${relativeDayLabel(d, today)}`}
+                aria-label={`${WEEKDAYS_SHORT[i]}: ${relativeDayLabel(d, today)}${frozen ? ' · congelado' : ''}`}
                 className="flex w-full flex-col items-center gap-1 py-1 transition active:scale-95"
               >
                 <span className={`text-[11px] font-semibold ${d === today ? 'text-accent' : 'text-ink-400'}`}>{WEEKDAYS_SHORT[i]}</span>
-                <span className={`grid size-9 place-items-center rounded-full text-xs font-black ${DOT[plan.kind]}`}>{dotLabel(plan, state.workouts)}</span>
+                <span
+                  className={`grid size-9 place-items-center rounded-full text-xs font-black ${frozen ? 'bg-sky-400/15 text-sky-300' : DOT[plan.kind]}`}
+                >
+                  {frozen ? <Snowflake size={15} /> : dotLabel(plan, state.workouts)}
+                </span>
               </button>
             </li>
           )
