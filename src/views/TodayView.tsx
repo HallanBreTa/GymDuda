@@ -29,7 +29,18 @@ import {
   projectDays,
   staleSession,
 } from '../domain/queue'
-import { doneSessionsDesc, findPrevious, sessionProgress, sessionStats, setHasData, setsFor, type SetField } from '../domain/sets'
+import {
+  doneSessionsDesc,
+  findPrevious,
+  findPreviousWarmup,
+  hasWarmup,
+  sessionProgress,
+  sessionStats,
+  setHasData,
+  setsFor,
+  warmupFor,
+  type SetField,
+} from '../domain/sets'
 import { restOf } from '../domain/rest'
 import type { GymStore } from '../hooks/useGymStore'
 import type { RestTimerControls } from '../hooks/useRestTimer'
@@ -57,7 +68,7 @@ type NextInfo = { date: string; workoutId: string } | null
 
 /** A sessão tem algo digitado/confirmado? (decide se trocar/descansar pede confirmação) */
 const hasData = (session?: WorkoutSession) =>
-  !!session && Object.values(session.logs).some((l) => l.sets.some(setHasData))
+  !!session && Object.values(session.logs).some((l) => l.sets.some(setHasData) || !!l.warmup?.done)
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
@@ -163,7 +174,19 @@ export function TodayView({
     })
   }
 
+  /** Aproximação confirmada → mesmo cronômetro de descanso de uma série (não conta no progresso). */
+  const toggleWarmup = (exercise: Exercise, w: Workout, done: boolean) => {
+    store.setWarmupDone(date, w.id, exercise, done)
+    const timerId = `${date}:${exercise.id}:aproximacao`
+    if (!done) return rest.cancel(timerId)
+    const restSec = restOf(exercise)
+    if (!isToday || session?.retroactive || restSec <= 0) return
+    rest.start({ id: timerId, exerciseName: exercise.name, setLabel: 'Aproximação', totalSec: restSec })
+  }
+
   const exerciseHandlers = (exercise: Exercise, w: Workout) => ({
+    onWarmupChange: (load: string) => store.updateWarmup(date, w.id, exercise, load),
+    onWarmupToggle: (done: boolean) => toggleWarmup(exercise, w, done),
     onUpdate: (i: number, field: SetField, value: string) => store.updateSet(date, w.id, exercise, i, { [field]: value }),
     onToggle: (i: number, done: boolean) => toggleSet(exercise, w, i, done),
     onAddSet: () => store.addSet(date, w.id, exercise),
@@ -307,6 +330,7 @@ export function TodayView({
             <div className="space-y-3">
               {workout.exercises.map((exercise, i) => {
                 const previous = findPrevious(sessionsDesc, exercise, date)
+                const previousWarmup = hasWarmup(exercise) ? findPreviousWarmup(sessionsDesc, exercise, date) : null
                 return (
                   <ExerciseLogCard
                     key={exercise.id}
@@ -315,6 +339,8 @@ export function TodayView({
                     // Kg já vem com a última carga usada (o store cria as séries do mesmo jeito)
                     sets={setsFor(session, exercise, previous)}
                     previous={previous}
+                    warmup={warmupFor(session, exercise, previousWarmup)}
+                    previousWarmup={previousWarmup}
                     mode="edit"
                     {...exerciseHandlers(exercise, workout)}
                   />
@@ -565,6 +591,7 @@ function DoneSection({
             index={i}
             exercise={{ id, name: log.name, kind: log.kind, sets: log.sets.length, reps: '', load: '', notes: '' }}
             sets={log.sets}
+            warmup={log.warmup}
             previous={null}
             mode="readonly"
           />

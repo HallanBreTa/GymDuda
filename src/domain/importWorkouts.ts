@@ -11,6 +11,7 @@
  *         { "nome": "Supino reto", "series": 4, "repeticoes": "8-10", "carga": "40kg", "descanso": "1:30", "obs": "..." }
  *         // carga, descanso e obs opcionais; descanso aceita "1:30", "90s", "2min" ou 90 (segundos)
  *         // "tipo": "tempo" (prancha, isometria) registra só a duração; "repeticoes" vira a meta ("45s")
+ *         // "aproximacao": true → tem série de aproximação (aquecimento) antes das séries; só em exercícios de peso
  *       ] }
  *   ]
  * }
@@ -59,7 +60,7 @@ export const IMPORT_EXAMPLE = {
       foco: 'Peito • Costas • Ombros',
       cor: 'verde',
       exercicios: [
-        { nome: 'Supino reto com barra', series: 4, repeticoes: '6-8', carga: '60kg', descanso: '2:00', obs: 'Descer controlado' },
+        { nome: 'Supino reto com barra', series: 4, repeticoes: '6-8', carga: '60kg', descanso: '2:00', aproximacao: true, obs: 'Descer controlado' },
         { nome: 'Remada curvada com barra', series: 4, repeticoes: '8-10', carga: '50kg', descanso: '1:30' },
         { nome: 'Desenvolvimento com halteres', series: 3, repeticoes: '8-10', descanso: '1:30' },
         { nome: 'Rosca direta', series: 3, repeticoes: '10-12', descanso: '1:00' },
@@ -70,7 +71,7 @@ export const IMPORT_EXAMPLE = {
       foco: 'Quadríceps • Posterior • Panturrilha',
       cor: 'laranja',
       exercicios: [
-        { nome: 'Agachamento livre', series: 4, repeticoes: '6-8', descanso: '3:00', obs: 'Aquecer com 2 séries leves' },
+        { nome: 'Agachamento livre', series: 4, repeticoes: '6-8', descanso: '3:00', aproximacao: true },
         { nome: 'Leg press 45°', series: 4, repeticoes: '10-12', descanso: '1:30' },
         { nome: 'Elevação pélvica', series: 3, repeticoes: '8-10', descanso: '2:00' },
         { nome: 'Panturrilha em pé', series: 4, repeticoes: '15-20', descanso: '0:45' },
@@ -93,6 +94,7 @@ Regras do formato:
 - "cor" pode ser: verde, azul, laranja, rosa, roxo ou turquesa.
 - Cada exercício tem "nome", "series" (número), "repeticoes" (texto, ex.: "8-12" ou "45s") e, opcionalmente, "carga" (ex.: "40kg"), "descanso" e "obs".
 - "tipo" (opcional): use "tempo" para exercícios medidos por duração (prancha, isometria); nesse caso "repeticoes" é a meta de tempo (ex.: "45s", "1:00"). Omita para exercícios de carga.
+- "aproximacao" (opcional): use true nos exercícios de carga que pedem uma série de aproximação (aquecimento com carga menor) antes das séries válidas, normalmente os compostos pesados. Omita nos demais.
 - "descanso": tempo de descanso entre as séries daquele exercício, no formato "m:ss" (ex.: "1:30", "2:00"). Use descansos maiores nos compostos pesados e menores nos isoladores.
 - "diasDeTreino" (opcional): dias da semana em que vou treinar, usando seg, ter, qua, qui, sex, sab, dom.
 
@@ -168,6 +170,7 @@ export function parseImport(text: string): ImportResult {
         notes: str(e.obs),
         ...(restSec !== null && { restSec }),
         ...(isTime && { kind: 'time' as const }),
+        ...(!isTime && e.aproximacao === true && { warmup: true }),
       })
     })
 
@@ -213,6 +216,7 @@ export function currentPlanJson(state: GymState) {
       exercicios: w.exercises.map((e) => ({
         nome: e.name,
         ...(e.kind === 'time' ? { tipo: 'tempo' } : {}),
+        ...(e.warmup && e.kind !== 'time' ? { aproximacao: true } : {}),
         series: e.sets,
         repeticoes: e.reps,
         ...(e.load ? { carga: e.load } : {}),

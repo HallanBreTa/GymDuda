@@ -8,14 +8,16 @@ import {
   doneSessionsDesc,
   emptySet,
   findPrevious,
+  findPreviousWarmup,
   initialSets,
   isSetValid,
+  isWarmupValid,
   kindOf,
   normalizeName,
   pruneUnconfirmed,
   suggestedLoadFrom,
 } from '../domain/sets'
-import type { Activity, ActivityMode, CheckIn, DayLog, Exercise, GymState, SetLog, Workout, WorkoutSession } from '../types'
+import type { Activity, ActivityMode, CheckIn, DayLog, Exercise, ExerciseLog, GymState, SetLog, Workout, WorkoutSession } from '../types'
 import { addDays, todayISO, uid, weekdayOf } from '../utils'
 import { useCloudSync } from './useCloudSync'
 
@@ -185,13 +187,33 @@ function editExerciseSets(
   exercise: Exercise,
   fn: (sets: SetLog[]) => SetLog[],
 ): GymState {
+  return editExerciseLog(s, date, workoutId, exercise, (log) => ({ ...log, sets: fn(log.sets) }))
+}
+
+/** Como editExerciseSets, para o registro inteiro do exercício (séries + aproximação). */
+function editExerciseLog(
+  s: GymState,
+  date: string,
+  workoutId: string,
+  exercise: Exercise,
+  fn: (log: ExerciseLog) => ExerciseLog,
+): GymState {
   return editSession(s, date, workoutId, (session) => {
-    const current =
-      session.logs[exercise.id]?.sets ?? initialSets(exercise, findPrevious(doneSessionsDesc(s.history), exercise, date))
-    const log = { name: exercise.name, ...(kindOf(exercise) === 'time' && { kind: 'time' as const }), sets: fn(current) }
-    return { ...session, logs: { ...session.logs, [exercise.id]: log } }
+    const existing = session.logs[exercise.id]
+    const sets = existing?.sets ?? initialSets(exercise, findPrevious(doneSessionsDesc(s.history), exercise, date))
+    const base: ExerciseLog = {
+      ...existing,
+      name: exercise.name,
+      ...(kindOf(exercise) === 'time' && { kind: 'time' as const }),
+      sets,
+    }
+    return { ...session, logs: { ...session.logs, [exercise.id]: fn(base) } }
   })
 }
+
+/** Aproximação atual do exercício na sessão (nova = Kg da última aproximação feita). */
+const currentWarmup = (s: GymState, date: string, log: ExerciseLog, exercise: Exercise) =>
+  log.warmup ?? { load: findPreviousWarmup(doneSessionsDesc(s.history), exercise, date)?.load ?? '', done: false }
 
 /**
  * Atualiza a "carga sugerida" dos exercícios de peso com a última carga usada na sessão
@@ -341,6 +363,25 @@ export function useGymStore({ onSyncReplaced }: { onSyncReplaced?: () => void } 
           editExerciseSets(s, date, workoutId, exercise, (sets) =>
               sets.map((set, i) => (i !== index || (done && !isSetValid(set, kindOf(exercise))) ? set : { ...set, done })),
           ),
+        )
+      },
+
+      updateWarmup(date: string, workoutId: string, exercise: Exercise, load: string) {
+        setState((s) =>
+          editExerciseLog(s, date, workoutId, exercise, (log) => {
+            const warmup = currentWarmup(s, date, log, exercise)
+            return warmup.done ? log : { ...log, warmup: { ...warmup, load } }
+          }),
+        )
+      },
+
+      /** Confirma/desfaz a aproximação. A confirmação exige uma carga válida. */
+      setWarmupDone(date: string, workoutId: string, exercise: Exercise, done: boolean) {
+        setState((s) =>
+          editExerciseLog(s, date, workoutId, exercise, (log) => {
+            const warmup = currentWarmup(s, date, log, exercise)
+            return done && !isWarmupValid(warmup) ? log : { ...log, warmup: { ...warmup, done } }
+          }),
         )
       },
 

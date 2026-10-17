@@ -1,5 +1,5 @@
 /** Regras de validação e consultas de séries (Feature 2). */
-import type { DayLog, Exercise, ExerciseKind, ExerciseLog, SetLog, Workout, WorkoutSession } from '../types'
+import type { DayLog, Exercise, ExerciseKind, ExerciseLog, SetLog, WarmupLog, Workout, WorkoutSession } from '../types'
 import { formatClock } from './rest'
 
 export const kindOf = (x: { kind?: ExerciseKind } | undefined): ExerciseKind => x?.kind ?? 'weight'
@@ -46,6 +46,44 @@ export function validateSet(set: SetLog, kind: ExerciseKind = 'weight'): SetErro
 }
 
 export const isSetValid = (set: SetLog, kind: ExerciseKind = 'weight') => Object.keys(validateSet(set, kind)).length === 0
+
+/* ---------- Série de aproximação ---------- */
+
+/** Aproximação só existe em exercícios de peso marcados (um exercício que virou "tempo" ignora o campo). */
+export const hasWarmup = (e: Pick<Exercise, 'warmup' | 'kind'>) => !!e.warmup && kindOf(e) === 'weight'
+
+export function validateWarmupLoad(load: string): string | null {
+  const n = parseDecimal(load)
+  if (n === null) return 'Informe a carga'
+  return n < 0 || n > 999 ? 'Carga inválida' : null
+}
+
+export const isWarmupValid = (w: WarmupLog) => validateWarmupLoad(w.load) === null
+
+export type PreviousWarmup = { date: string; load: string }
+
+/** Última aproximação feita no exercício antes de `beforeDate` (por id ou, se não achar, pelo nome). */
+export function findPreviousWarmup(
+  sessionsDesc: [string, WorkoutSession][],
+  exercise: Exercise,
+  beforeDate: string,
+): PreviousWarmup | null {
+  const name = normalizeName(exercise.name)
+  for (const [date, session] of sessionsDesc) {
+    if (date >= beforeDate) continue
+    const log =
+      session.logs[exercise.id] ?? Object.values(session.logs).find((l) => normalizeName(l.name) === name)
+    if (log?.warmup?.done) return { date, load: log.warmup.load }
+  }
+  return null
+}
+
+/** Aproximação a exibir: a registrada ou uma nova com o Kg da última vez. */
+export function warmupFor(session: WorkoutSession | undefined, exercise: Exercise, previous: PreviousWarmup | null): WarmupLog {
+  return session?.logs[exercise.id]?.warmup ?? { load: previous?.load ?? '', done: false }
+}
+
+export const formatWarmup = (w: WarmupLog) => `aproximação ${w.load.replace('.', ',')}kg`
 
 /** Série com algo digitado (decide confirmações de descartar/trocar). */
 export const setHasData = (s: SetLog) => !!(s.done || s.load || s.reps || s.rir || s.time)
@@ -117,7 +155,9 @@ export function pruneUnconfirmed(logs: Record<string, ExerciseLog>): Record<stri
   const out: Record<string, ExerciseLog> = {}
   for (const [id, log] of Object.entries(logs)) {
     const sets = log.sets.filter((s) => s.done)
-    if (sets.length) out[id] = { ...log, sets }
+    const { warmup, ...rest } = log
+    if (warmup?.done) out[id] = { ...rest, sets, warmup }
+    else if (sets.length) out[id] = { ...rest, sets }
   }
   return out
 }

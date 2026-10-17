@@ -1,10 +1,20 @@
-import { AlertCircle, Check, ChevronDown, Dumbbell, History, Hourglass, Minus, Plus, Timer } from 'lucide-react'
+import { AlertCircle, ChartNoAxesColumnIncreasing, Check, ChevronDown, Dumbbell, History, Hourglass, Minus, Plus, Timer } from 'lucide-react'
 import { useState } from 'react'
 import { formatClock, parseRest, restOf } from '../domain/rest'
-import { formatSet, isSetValid, kindOf, parseDecimal, type PreviousPerformance, type SetField } from '../domain/sets'
-import type { Exercise, SetLog } from '../types'
+import {
+  formatSet,
+  hasWarmup,
+  isSetValid,
+  isWarmupValid,
+  kindOf,
+  parseDecimal,
+  type PreviousPerformance,
+  type PreviousWarmup,
+  type SetField,
+} from '../domain/sets'
+import type { Exercise, SetLog, WarmupLog } from '../types'
 import { formatShortDate } from '../utils'
-import { SetRow } from './SetRow'
+import { SetRow, WarmupRow } from './SetRow'
 import { vibrate } from '../feedback'
 
 type EditProps = {
@@ -14,6 +24,8 @@ type EditProps = {
   onAddSet: () => void
   onRemoveSet: (index: number) => void
   onFillPrevious: () => void
+  onWarmupChange: (load: string) => void
+  onWarmupToggle: (done: boolean) => void
 }
 type ReadProps = { mode: 'readonly' }
 
@@ -22,19 +34,27 @@ type Props = {
   exercise: Exercise
   sets: SetLog[]
   previous: PreviousPerformance | null
+  /** Aproximação: a atual (edição) ou a registrada (leitura). */
+  warmup?: WarmupLog | null
+  previousWarmup?: PreviousWarmup | null
 } & (EditProps | ReadProps)
 
 export function ExerciseLogCard(props: Props) {
-  const { index, exercise, sets, previous } = props
+  const { index, exercise, sets, previous, warmup, previousWarmup } = props
   const doneCount = sets.filter((s) => s.done).length
   const complete = doneCount === sets.length && sets.length > 0
   const [expanded, setExpanded] = useState(!complete)
   // Séries em que o usuário tentou confirmar sem preencher → mostram erro.
   const [attempts, setAttempts] = useState<Record<number, number>>({})
+  const [warmupAttempts, setWarmupAttempts] = useState(0)
 
   const kind = kindOf(exercise)
   const isTime = kind === 'time'
   const isEdit = props.mode === 'edit'
+  const editWarmup = isEdit && hasWarmup(exercise) && warmup ? warmup : null
+  const loggedWarmup = !isEdit && warmup?.done ? warmup : null
+  // Treino previsto (sem séries) mostra a TAG do cadastro; o histórico, só se a aproximação foi feita.
+  const showWarmupTag = isEdit ? hasWarmup(exercise) : !!loggedWarmup || (!sets.length && hasWarmup(exercise))
   const showBody = !isEdit || expanded || !complete
   const hasInvalidAttempt = isEdit && sets.some((s, i) => attempts[i] && !s.done && !isSetValid(s, kind))
   const canFill =
@@ -51,11 +71,14 @@ export function ExerciseLogCard(props: Props) {
         {complete ? <Check size={15} strokeWidth={3.5} /> : index + 1}
       </span>
       <div className="min-w-0 flex-1">
-        <KindTag kind={kind} />
+        <span className="flex flex-wrap gap-1">
+          <KindTag kind={kind} />
+          {showWarmupTag && <WarmupTag />}
+        </span>
         <p className="leading-snug font-semibold">{exercise.name}</p>
         <p className="mt-0.5 text-[13px] text-ink-400">
-          {!isEdit && sets.length > 0 ? (
-            `${sets.length} séries registradas`
+          {!isEdit && (sets.length > 0 || loggedWarmup) ? (
+            sets.length ? `${sets.length} séries registradas` : 'Só a aproximação registrada'
           ) : (
             <>
               Meta {exercise.sets} × {exercise.reps}
@@ -98,7 +121,9 @@ export function ExerciseLogCard(props: Props) {
             <div className="flex items-center gap-2 rounded-xl bg-ink-850 px-3 py-2">
               <History size={15} className="shrink-0 text-sky-400" />
               <p className="min-w-0 flex-1 truncate text-[13px] text-ink-300">
-                <span className="text-ink-400">{formatShortDate(previous.date)}:</span> {previous.sets.map((s) => formatSet(s, kind)).join(' · ')}
+                <span className="text-ink-400">{formatShortDate(previous.date)}:</span>{' '}
+                {previousWarmup?.date === previous.date && `aprox. ${previousWarmup.load.replace('.', ',')}kg · `}
+                {previous.sets.map((s) => formatSet(s, kind)).join(' · ')}
               </p>
               {canFill && (
                 <button
@@ -131,6 +156,23 @@ export function ExerciseLogCard(props: Props) {
                 </div>
               )}
               <div className="space-y-2">
+                {editWarmup && props.mode === 'edit' && (
+                  <WarmupRow
+                    warmup={editWarmup}
+                    showErrors={warmupAttempts > 0}
+                    shakeKey={warmupAttempts}
+                    onChange={props.onWarmupChange}
+                    onToggle={() => {
+                      if (editWarmup.done) return props.onWarmupToggle(false)
+                      if (!isWarmupValid(editWarmup)) {
+                        setWarmupAttempts((n) => n + 1)
+                        vibrate(40)
+                        return
+                      }
+                      props.onWarmupToggle(true)
+                    }}
+                  />
+                )}
                 {sets.map((set, i) => (
                   <SetRow
                     key={i}
@@ -188,8 +230,15 @@ export function ExerciseLogCard(props: Props) {
               </div>
             </>
           ) : (
-            sets.length > 0 && (
+            (sets.length > 0 || loggedWarmup) && (
               <ul className="space-y-1">
+                {loggedWarmup && (
+                  <li className="flex items-center gap-3 text-sm">
+                    <span className="w-5 text-center font-bold text-ink-400">A</span>
+                    <span className="tabular-nums">{loggedWarmup.load.replace('.', ',')} kg</span>
+                    <span className="ml-auto rounded-md bg-ink-800 px-2 py-0.5 text-xs font-semibold text-ink-300">Aproximação</span>
+                  </li>
+                )}
                 {sets.map((s, i) =>
                   isTime ? (
                     <li key={i} className="flex items-center gap-3 text-sm">
@@ -225,6 +274,15 @@ export function KindTag({ kind }: { kind: 'weight' | 'time' }) {
   ) : (
     <span className="mb-1 inline-flex items-center gap-1 rounded-md bg-ink-800 px-1.5 py-0.5 text-[10px] font-black tracking-wider text-ink-400 uppercase">
       <Dumbbell size={11} strokeWidth={2.5} /> Peso
+    </span>
+  )
+}
+
+/** TAG de exercício com série de aproximação. */
+function WarmupTag() {
+  return (
+    <span className="mb-1 inline-flex items-center gap-1 rounded-md bg-orange-400/12 px-1.5 py-0.5 text-[10px] font-black tracking-wider text-orange-400 uppercase">
+      <ChartNoAxesColumnIncreasing size={11} strokeWidth={2.5} /> Aproximação
     </span>
   )
 }

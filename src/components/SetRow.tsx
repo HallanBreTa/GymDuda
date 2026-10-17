@@ -1,9 +1,9 @@
 import { Check, Lock, Play, Square } from 'lucide-react'
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { digitsToSeconds, formatClock } from '../domain/rest'
-import { isSetValid, MAX_SET_TIME_SEC, parseDecimal, validateSet, type SetField } from '../domain/sets'
+import { isSetValid, isWarmupValid, MAX_SET_TIME_SEC, parseDecimal, validateSet, validateWarmupLoad, type SetField } from '../domain/sets'
 import { beep, unlockAudio, vibrate } from '../feedback'
-import type { ExerciseKind, SetLog } from '../types'
+import type { ExerciseKind, SetLog, WarmupLog } from '../types'
 
 type Props = {
   index: number
@@ -120,6 +120,62 @@ export function SetRow({ index, set, kind, targetSec, previous, showErrors, shak
         )
       })}
       {checkButton}
+    </div>
+  )
+}
+
+/** Série de aproximação: só o Kg, antes das séries. Confirmar dispara o descanso como uma série normal. */
+export function WarmupRow({
+  warmup,
+  showErrors,
+  shakeKey,
+  onChange,
+  onToggle,
+}: {
+  warmup: WarmupLog
+  showErrors: boolean
+  shakeKey: number
+  onChange: (load: string) => void
+  onToggle: () => void
+}) {
+  const error = showErrors && !warmup.done ? validateWarmupLoad(warmup.load) : null
+  const valid = isWarmupValid(warmup)
+  return (
+    <div key={shakeKey} className={`grid grid-cols-[1.75rem_1fr_2fr_3rem] items-center gap-1.5 ${error ? 'animate-shake' : ''}`}>
+      <span className={`text-center text-sm font-bold ${warmup.done ? 'text-accent' : 'text-ink-400'}`} aria-hidden>
+        A
+      </span>
+      <input
+        type="text"
+        inputMode="decimal"
+        enterKeyHint="next"
+        autoComplete="off"
+        maxLength={6}
+        aria-label="Carga da série de aproximação"
+        aria-invalid={!!error || undefined}
+        title={error ?? undefined}
+        disabled={warmup.done}
+        value={warmup.load}
+        placeholder="–"
+        onChange={(e) => onChange(sanitize('load', e.target.value))}
+        onFocus={(e) => e.currentTarget.select()}
+        onKeyDown={focusNext}
+        className={inputClass(warmup.done, !!error)}
+      />
+      <span className="px-1 text-[13px] font-semibold text-ink-400">Aproximação</span>
+      <button
+        type="button"
+        onClick={onToggle}
+        role="checkbox"
+        aria-checked={warmup.done}
+        aria-disabled={!warmup.done && !valid}
+        aria-label={warmup.done ? 'Desfazer série de aproximação' : 'Confirmar série de aproximação'}
+        className={`grid h-12 w-12 place-items-center rounded-xl border-2 transition active:scale-90 ${
+          warmup.done ? 'border-lime bg-lime text-on-accent' : valid ? 'border-lime/70 text-accent hover:bg-lime/10' : 'border-ink-700 text-ink-600'
+        }`}
+      >
+        {warmup.done || valid ? <Check size={22} strokeWidth={3} /> : <Lock size={16} />}
+      </button>
     </div>
   )
 }

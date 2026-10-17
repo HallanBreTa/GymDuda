@@ -12,6 +12,8 @@ export type Exercise = {
   notes: string
   /** Descanso entre séries, em segundos. Ausente = padrão (90s); 0 = sem cronômetro. */
   restSec?: number
+  /** Tem série de aproximação (aquecimento) antes das séries válidas. Só em exercícios de peso. */
+  warmup?: boolean
 }
 
 export const WORKOUT_COLORS = ['lime', 'sky', 'orange', 'pink', 'violet', 'teal'] as const
@@ -42,7 +44,11 @@ export type ExerciseLog = {
   /** Snapshot do tipo: histórico/estatísticas sabem que é tempo mesmo se o exercício mudar. */
   kind?: ExerciseKind
   sets: SetLog[]
+  /** Série de aproximação: só a carga, fora das estatísticas. */
+  warmup?: WarmupLog
 }
+
+export type WarmupLog = { load: string; done: boolean }
 
 /* ---------- Histórico / fila (Feature 1) ---------- */
 

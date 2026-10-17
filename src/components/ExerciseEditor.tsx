@@ -1,11 +1,11 @@
-import { Dumbbell, Hourglass, Minus, Plus } from 'lucide-react'
+import { ChartNoAxesColumnIncreasing, Dumbbell, Hourglass, Minus, Plus } from 'lucide-react'
 import { useState } from 'react'
 import { DEFAULT_REST_SEC, formatClock, formatRest, looksLikeDuration, MAX_REST_SEC, restOf } from '../domain/rest'
 import { kindOf } from '../domain/sets'
 import type { Exercise, ExerciseKind } from '../types'
 import { uid } from '../utils'
 import { BottomSheet } from './BottomSheet'
-import { Button, Field, TextArea, TextInput } from './ui'
+import { Button, Field, TextArea, TextInput, ToggleRow } from './ui'
 
 type Props = {
   exercise: Exercise | null // null = novo exercício
@@ -41,11 +41,13 @@ export function ExerciseEditor({ exercise, onSave, onClose }: Props) {
 
   const submit = () => {
     if (!canSave) return
-    const { kind: _omit, ...base } = draft
+    const { kind: _omit, warmup: _omitWarmup, ...base } = draft
     void _omit
+    void _omitWarmup
     onSave({
       ...base,
       ...(isTime && { kind: 'time' as const }), // Peso é o padrão: não grava o campo
+      ...(!isTime && draft.warmup && { warmup: true }), // aproximação só em exercícios de peso
       name: draft.name.trim(),
       reps: draft.reps.trim(),
       load: isTime ? '' : draft.load.trim(),
@@ -96,6 +98,16 @@ export function ExerciseEditor({ exercise, onSave, onClose }: Props) {
             )
           })}
         </div>
+
+        {!isTime && (
+          <ToggleRow
+            icon={ChartNoAxesColumnIncreasing}
+            label="Série de aproximação"
+            hint="Uma série de aquecimento antes das séries, só com o Kg"
+            checked={!!draft.warmup}
+            onChange={(on) => set('warmup', on)}
+          />
+        )}
 
         <Field label="Nome do exercício">
           <TextInput

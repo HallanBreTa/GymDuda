@@ -13,6 +13,7 @@ import {
 import { useState, type ReactNode } from 'react'
 import { ImportSheet } from '../components/ImportSheet'
 import { SyncPanel } from '../components/SyncPanel'
+import { ToggleRow } from '../components/ui'
 import type { ImportedPlan } from '../domain/importWorkouts'
 import { canVibrate, restFinishedAlert, unlockAudio, useFeedbackPrefs } from '../feedback'
 import type { CloudSync } from '../hooks/useCloudSync'
@@ -41,45 +42,6 @@ type Props = {
   theme: ThemePref
   onThemeChange: (theme: ThemePref) => void
   onImport: (plan: ImportedPlan, mode: 'replace' | 'add', useDays: boolean) => void
-}
-
-function ToggleRow({
-  icon: Icon,
-  label,
-  hint,
-  checked,
-  disabled,
-  onChange,
-}: {
-  icon: typeof Sun
-  label: string
-  hint: string
-  checked: boolean
-  disabled?: boolean
-  onChange: (checked: boolean) => void
-}) {
-  const on = checked && !disabled
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={on}
-      disabled={disabled}
-      onClick={() => onChange(!checked)}
-      className="flex min-h-16 w-full items-center gap-3 rounded-2xl bg-ink-850 p-3 text-left transition hover:bg-ink-800 active:scale-[0.99] disabled:opacity-50"
-    >
-      <span className={`grid size-11 shrink-0 place-items-center rounded-xl ${on ? 'bg-lime/15 text-accent' : 'bg-ink-800 text-ink-400'}`}>
-        <Icon size={20} />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block font-semibold">{label}</span>
-        <span className="block text-[13px] text-ink-400">{hint}</span>
-      </span>
-      <span className={`relative h-7 w-12 shrink-0 rounded-full transition ${on ? 'bg-lime' : 'bg-ink-700'}`}>
-        <span className={`absolute top-1 size-5 rounded-full bg-white shadow transition-all ${on ? 'left-6' : 'left-1'}`} />
-      </span>
-    </button>
-  )
 }
 
 export function SettingsView({ state, sync, theme, onThemeChange, onImport }: Props) {

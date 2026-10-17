@@ -4,7 +4,7 @@ import type { Activity, GymState, SetLog, WorkoutSession } from '../types'
 import { addDays, diffDays, parseISODate, WEEKDAYS_SHORT, weekdayOf } from '../utils'
 import { activityDetails } from './activities'
 import { average, checkinLine } from './checkins'
-import { formatSet, kindOf, sessionStats } from './sets'
+import { formatSet, formatWarmup, hasWarmup, kindOf, sessionStats } from './sets'
 import { estimated1RM } from './stats'
 
 export type ExportOptions = {
@@ -59,8 +59,8 @@ function sessionBlock(state: GymState, date: string, session: WorkoutSession) {
     return (ia < 0 ? Infinity : ia) - (ib < 0 ? Infinity : ib)
   })
   for (const [, log] of entries) {
-    const sets = log.sets.filter((s) => s.done)
-    if (sets.length) lines.push(`- ${log.name}: ${sets.map((s) => formatSet(s, kindOf(log))).join(' | ')}`)
+    const parts = [...(log.warmup?.done ? [formatWarmup(log.warmup)] : []), ...log.sets.filter((s) => s.done).map((s) => formatSet(s, kindOf(log)))]
+    if (parts.length) lines.push(`- ${log.name}: ${parts.join(' | ')}`)
   }
   return lines
 }
@@ -97,7 +97,11 @@ export function buildTrainingLog(state: GymState, { from, today, withPrompt }: E
     out.push(`### ${w.name}${w.focus.trim() ? ` — foco: ${w.focus.trim()}` : ''}`)
     if (!w.exercises.length) out.push('- (sem exercícios)')
     for (const e of w.exercises) {
-      const extras = [e.load.trim() && `carga sugerida ${e.load.trim()}`, e.notes.trim() && `obs: ${e.notes.trim()}`].filter(Boolean)
+      const extras = [
+        hasWarmup(e) && 'com série de aproximação',
+        e.load.trim() && `carga sugerida ${e.load.trim()}`,
+        e.notes.trim() && `obs: ${e.notes.trim()}`,
+      ].filter(Boolean)
       const tag = kindOf(e) === 'time' ? ' (tempo)' : ''
       out.push(`- ${e.name}: ${e.sets} × ${e.reps || '?'}${tag}${extras.length ? ` (${extras.join('; ')})` : ''}`)
     }

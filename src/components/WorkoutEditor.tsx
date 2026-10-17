@@ -1,5 +1,6 @@
 import { ChevronDown, ChevronUp, Dumbbell, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
+import { hasWarmup } from '../domain/sets'
 import { WORKOUT_COLORS, type Exercise, type Workout } from '../types'
 import { COLOR_STYLES, uid } from '../utils'
 import { BottomSheet } from './BottomSheet'
@@ -151,6 +152,7 @@ export function WorkoutEditor({ workout, suggestedName = '', onSave, onDelete, o
                       <p className="truncate text-[15px] font-semibold">{exercise.name}</p>
                       <p className="truncate text-[13px] text-ink-400">
                         {exercise.kind === 'time' && '⏱ '}
+                        {hasWarmup(exercise) && 'Aprox. + '}
                         {exercise.sets} × {exercise.reps}
                         {exercise.load && ` • ${exercise.load}`}
                       </p>
