@@ -12,10 +12,10 @@ import type { GymState, Mood } from '../types'
 import { addDays, diffDays, formatShortDate, weekdayOf, WEEKDAYS, WEEKDAYS_SHORT } from '../utils'
 
 const PERIODS: { days: number | null; label: string }[] = [
+  { days: 7, label: '7 dias' },
   { days: 30, label: '30 dias' },
   { days: 90, label: '90 dias' },
-  { days: 182, label: '6 meses' },
-  { days: null, label: 'Tudo' },
+  { days: null, label: 'Todos' },
 ]
 
 const pct = (part: number, total: number) => (total ? Math.round((part / total) * 100) : 0)
@@ -80,7 +80,6 @@ export function StatsView({ state, today }: { state: GymState; today: string }) 
           <Kpis stats={stats} />
           <CardioSection stats={stats} />
           <WeekdayCharts stats={stats} />
-          <TimeCharts stats={stats} />
           <ExerciseProgress stats={stats} />
           <Rankings stats={stats} />
         </>
@@ -320,59 +319,6 @@ function WeekdayCharts({ stats }: { stats: Stats }) {
         table={table}
       >
         <ColumnChart columns={missedColumns} tone="coral" />
-      </ChartCard>
-    </div>
-  )
-}
-
-/* ---------- Ao longo do tempo ---------- */
-
-function TimeCharts({ stats }: { stats: Stats }) {
-  const weekly = stats.bucketUnit === 'week'
-  const unit = weekly ? 'semana' : 'mês'
-  const periodLabel = (b: Stats['buckets'][number]) =>
-    `${weekly ? `Semana de ${formatShortDate(b.start)}` : b.label}${b.current ? ' (em andamento)' : ''}`
-  const labelEvery = Math.ceil(stats.buckets.length / 8)
-
-  const sessionColumns: Column[] = stats.buckets.map((b) => ({
-    label: b.label,
-    value: b.sessions,
-    tipValue: `${b.sessions} ${b.sessions === 1 ? 'treino' : 'treinos'}`,
-    tipLabel: periodLabel(b),
-  }))
-  const volumeColumns: Column[] = stats.buckets.map((b) => ({
-    label: b.label,
-    value: b.volume,
-    tipValue: `${fmt(b.volume, 0)} kg`,
-    tipLabel: periodLabel(b),
-  }))
-
-  const fullWeeks = stats.buckets.filter((b) => !b.current)
-  const hitGoal = weekly ? fullWeeks.filter((b) => b.sessions >= stats.plannedPerWeek).length : 0
-  const table = {
-    head: [weekly ? 'Semana' : 'Mês', 'Treinos', 'Volume (kg)', 'Atividades'],
-    rows: stats.buckets.map((b) => [periodLabel(b), b.sessions, fmt(b.volume, 0), b.activityMin ? formatDuration(b.activityMin) : '—']),
-  }
-
-  return (
-    <div className="grid gap-3 md:grid-cols-2">
-      <ChartCard
-        title={`Treinos por ${unit}`}
-        subtitle={
-          weekly && stats.plannedPerWeek && fullWeeks.length
-            ? `Bateu a meta de ${stats.plannedPerWeek} em ${hitGoal} de ${fullWeeks.length} semanas`
-            : `Total de ${stats.sessions} treinos`
-        }
-        table={table}
-      >
-        <ColumnChart
-          columns={sessionColumns}
-          labelEvery={labelEvery}
-          reference={weekly && stats.plannedPerWeek ? { value: stats.plannedPerWeek, label: `meta ${stats.plannedPerWeek}` } : undefined}
-        />
-      </ChartCard>
-      <ChartCard title={`Volume por ${unit}`} subtitle="Carga × repetições das séries concluídas (kg)" table={table}>
-        <ColumnChart columns={volumeColumns} labelEvery={labelEvery} format={fmtCompact} />
       </ChartCard>
     </div>
   )
